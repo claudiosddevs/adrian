@@ -1,0 +1,32 @@
+flowchart TB
+    subgraph CapaPresentacion["1. Presentación"]
+        WF["WinForms (Admin)"]
+        WEBC["Web Cliente"]
+        CTRL["Controllers API<br/>(ASP.NET Core)"]
+    end
+
+    subgraph CapaAplicacion["2. Aplicación"]
+        APP_SVC["Casos de Uso<br/>(MediatR Handlers)"]
+        DTO["DTOs · Commands · Queries"]
+        VAL["Validadores<br/>(FluentValidation)"]
+    end
+
+    subgraph CapaDominio["3. Dominio (núcleo)"]
+        ENT["Entidades<br/>Cliente, Contrato, Pago,<br/>Reclamo, Mora..."]
+        ENUMS["Enums / Constantes"]
+        DOM_SVC["Servicios de Dominio<br/>CalculadoraMora<br/>AsignadorTecnico"]
+        IREPO["Interfaces Repo · IUnitOfWork"]
+    end
+
+    subgraph CapaInfra["4. Infraestructura"]
+        EFCORE["EF Core 9<br/>DbContext · Migrations"]
+        REPO["Repositorios"]
+        AUTH["JWT · BCrypt"]
+        STORAGE["Azure Blob Adapter"]
+        CACHE["Redis Adapter"]
+    end
+
+    CapaPresentacion --> CapaAplicacion
+    CapaAplicacion --> CapaDominio
+    CapaInfra --> CapaDominio
+    CapaPresentacion -.composition.-> CapaInfra

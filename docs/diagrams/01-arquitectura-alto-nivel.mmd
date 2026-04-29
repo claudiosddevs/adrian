@@ -1,0 +1,52 @@
+flowchart TB
+    subgraph Clientes["Clientes"]
+        DESKTOP["Aplicación Desktop<br/>(WinForms .NET 9)<br/>Panel Administrativo"]
+        WEB["Aplicación Web<br/>(ASP.NET Core MVC / Blazor)<br/>Portal Clientes / Pagos"]
+        MOBILE["App Móvil<br/>(opcional - fase 2)"]
+    end
+
+    subgraph Edge["Borde / Seguridad"]
+        APIM["Azure API Management<br/>Rate Limiting · Versionado · OpenAPI"]
+        FRONTDOOR["Azure Front Door<br/>WAF · TLS · CDN"]
+    end
+
+    subgraph Backend["Backend - Azure App Service"]
+        API["ASP.NET Core 9 Web API<br/>RESTful + JWT + RBAC"]
+    end
+
+    subgraph Servicios["Servicios Transversales"]
+        AAD["Azure AD B2C<br/>Identidad de Clientes"]
+        KV["Azure Key Vault<br/>Secretos y Conn Strings"]
+        REDIS["Azure Cache for Redis<br/>Catálogos y Sesión"]
+        BLOB["Azure Blob Storage<br/>Audios HU17 · PDFs"]
+        FUNC["Azure Functions<br/>Jobs: Mora · Corte · Backups"]
+    end
+
+    subgraph Datos["Capa de Datos"]
+        SQL[("Azure SQL Database<br/>FullInternetServices · 8 tablas")]
+        BACKUP[("Azure Backup<br/>Geo-redundante")]
+    end
+
+    subgraph Observabilidad["Observabilidad"]
+        AI["Application Insights"]
+        LOG["Azure Monitor / Log Analytics"]
+    end
+
+    DESKTOP -->|HTTPS · JWT| APIM
+    WEB -->|HTTPS · JWT| FRONTDOOR
+    MOBILE -->|HTTPS · JWT| APIM
+    FRONTDOOR --> APIM
+    APIM --> API
+
+    API --> AAD
+    API --> KV
+    API --> REDIS
+    API --> BLOB
+    API --> SQL
+
+    FUNC --> SQL
+    FUNC --> BLOB
+    SQL --> BACKUP
+    API --> AI
+    API --> LOG
+    FUNC --> AI

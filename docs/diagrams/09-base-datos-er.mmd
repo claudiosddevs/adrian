@@ -1,0 +1,103 @@
+erDiagram
+    ROL ||--o{ USUARIO : "tiene"
+    USUARIO ||--o{ CONTRATO : "registra"
+    USUARIO ||--o{ PAGO : "cobra (cajero)"
+    USUARIO ||--o{ RECLAMO : "atiende (técnico)"
+    CLIENTE ||--o{ CONTRATO : "firma"
+    CLIENTE ||--o{ RECLAMO : "abre"
+    PLAN_SERVICIO ||--o{ CONTRATO : "elige"
+    CONTRATO ||--o{ PAGO : "genera"
+    CONTRATO ||--|| MORA : "puede caer en"
+    CONTRATO ||--o{ RECLAMO : "vincula"
+
+    ROL {
+        tinyint id_rol PK
+        varchar nombre_rol UK
+        bit activo
+    }
+
+    USUARIO {
+        int id_usuario PK
+        tinyint id_rol FK
+        varchar username UK
+        varchar password_hash
+        varchar email UK
+        varchar nombres
+        varchar apellidos
+        varchar especialidad
+        bit activo
+        tinyint intentos_fallidos
+        datetime bloqueado_hasta
+    }
+
+    CLIENTE {
+        int id_cliente PK
+        char tipo_cliente
+        varchar codigo_cliente UK
+        varchar nombre_razon_social
+        varchar nit_ci UK
+        varchar email UK
+        varchar telefono
+        varchar direccion
+        varchar ciudad
+        bit activo
+    }
+
+    PLAN_SERVICIO {
+        int id_plan PK
+        varchar nombre_plan
+        varchar tipo_servicio
+        decimal velocidad_bajada_mbps
+        decimal velocidad_subida_mbps
+        decimal precio_mensual
+    }
+
+    CONTRATO {
+        int id_contrato PK
+        int id_cliente FK
+        int id_plan FK
+        int id_usuario_registro FK
+        varchar numero_contrato UK
+        date fecha_inicio
+        date fecha_fin
+        varchar estado
+    }
+
+    PAGO {
+        int id_pago PK
+        int id_contrato FK
+        int id_cajero FK
+        varchar metodo_pago
+        varchar numero_recibo UK
+        tinyint periodo_mes
+        smallint periodo_anio
+        decimal monto_total
+        decimal monto_mora
+        bit anulado
+    }
+
+    MORA {
+        int id_mora PK
+        int id_contrato FK
+        bit en_mora
+        date fecha_inicio_mora
+        decimal monto_adeudado
+        bit servicio_cortado
+    }
+
+    RECLAMO {
+        int id_reclamo PK
+        int id_cliente FK
+        int id_contrato FK
+        int id_tecnico FK
+        int id_usuario_registro FK
+        varchar numero_reclamo UK
+        varchar tipo_reclamo
+        varchar estado
+        text descripcion_problema
+        tinyint prioridad
+        varchar canal_entrada
+        datetime fecha_apertura
+        tinyint calificacion
+        varchar ruta_audio
+    }

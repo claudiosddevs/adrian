@@ -1,0 +1,3 @@
+flowchart LR
+    APP[App Service] -- Managed Identity --> KV[Key Vault]
+    KV --> SECRETS["Jwt:Key<br/>ConnectionStrings:FisDatabase<br/>AzureAD:Secret"]

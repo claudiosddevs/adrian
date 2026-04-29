@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph Forms["Formularios (Vistas)"]
+        FL[frmLogin]
+        FD[frmDashboard]
+        FC[frmClientes - HU03]
+        FP[frmPagos - HU07]
+        FR[frmReclamos - HU14]
+        FT[frmTecnicos - HU15]
+        FRP[frmReportes - HU20]
+    end
+
+    subgraph DI["Microsoft.Extensions.DependencyInjection"]
+        SP[ServiceProvider]
+    end
+
+    subgraph Services["Servicios cliente"]
+        TS[TokenStore<br/>memoria + DPAPI]
+        SU[SesionUsuario<br/>Datos del UserInfo]
+        AH[AuthHeaderHandler<br/>Inyecta JWT en cada request]
+        PERM[PermisosService<br/>Filtra UI por rol]
+    end
+
+    subgraph HTTP["Cliente HTTP - Refit"]
+        IF[IFisApiClient<br/>Interfaz tipada]
+    end
+
+    API[("FIS.Api - HTTPS")]
+
+    FL --> SP
+    FD --> SP
+    FC --> SP
+    SP --> TS & SU & AH & IF & PERM
+    IF --> AH --> API
+    API -.JWT validation.-> AH
+    TS -.lee/escribe token.-> AH
+    SU -.consulta rol.-> PERM
+    PERM -.habilita/oculta.-> Forms

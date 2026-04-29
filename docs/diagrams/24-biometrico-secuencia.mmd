@@ -1,0 +1,15 @@
+sequenceDiagram
+    actor U as Usuario
+    participant App as Cliente Desktop
+    participant Cam as Cámara local
+    participant API
+    participant ML as Cognitive Services<br/>Face API
+
+    U->>App: Selecciona "Login Biométrico"
+    App->>Cam: CapturarFotograma()
+    Cam-->>App: imagen jpeg
+    App->>API: POST /auth/biometrico {imagen, username}
+    API->>ML: Detect + Verify
+    ML-->>API: confidence 0.97
+    API->>API: ¿confidence > 0.85?
+    API-->>App: TokenResponse

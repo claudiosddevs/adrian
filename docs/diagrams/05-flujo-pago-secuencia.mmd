@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor Cajero
+    participant WF as frmRegistrarPago
+    participant Refit as IFisApiClient
+    participant API as PagosController
+    participant MED as MediatR
+    participant H as RegistrarPagoHandler
+    participant DOM as Pago / CalculadoraMora
+    participant REPO as PagoRepository
+    participant DB as SQL Server
+
+    Cajero->>WF: Datos del pago
+    WF->>Refit: POST /api/v1/pagos
+    Refit->>API: HTTP + JWT Bearer
+    API->>API: ValidateToken + RBAC<br/>(Administrador, Cajero)
+    API->>MED: RegistrarPagoCommand
+    MED->>MED: ValidationBehavior<br/>(FluentValidation)
+    MED->>H: Handle()
+    H->>REPO: ObtenerContratoActivo()
+    REPO->>DB: SELECT
+    DB-->>REPO: Contrato
+    H->>DOM: Pago.Crear()
+    H->>DOM: CalculadoraMora.AplicarMora()
+    H->>REPO: AddAsync(pago)
+    H->>REPO: UnitOfWork.SaveChanges()
+    REPO->>DB: INSERT (o EXEC sp_pago_insert)
+    DB-->>REPO: id_pago, numero_recibo
+    H-->>API: PagoDto
+    API-->>Refit: 201 + ApiResponse
+    Refit-->>WF: ApiResponse<PagoDto>
+    WF-->>Cajero: Confirmación + recibo

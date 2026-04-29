@@ -1,0 +1,9 @@
+flowchart LR
+    REQ[HTTP Request] --> CTRL[Controller]
+    CTRL -->|_mediator.Send| PIPE[ValidationBehavior]
+    PIPE --> HAND[Handler]
+    HAND --> REPO[Repository]
+    HAND --> DOM[Domain Service]
+    REPO --> DB[(SQL Server)]
+    HAND --> RESP[DTO Result]
+    RESP --> CTRL --> RESP_HTTP[HTTP Response]

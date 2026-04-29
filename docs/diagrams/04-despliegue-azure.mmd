@@ -1,0 +1,68 @@
+flowchart TB
+    subgraph Internet["Internet"]
+        USER1["Administrador<br/>(Oficina)"]
+        USER2["Cajero / Técnico"]
+        USER3["Cliente Final"]
+    end
+
+    subgraph Azure["Microsoft Azure - Brazil South / East US 2"]
+        subgraph Edge["Edge"]
+            FD["Azure Front Door<br/>+ WAF Premium"]
+            APIM["API Management<br/>Standard v2"]
+        end
+
+        subgraph AppLayer["App Layer"]
+            ASP1["App Service Plan P1v3"]
+            ASP1 --> WEBAPI["App Service<br/>fis-api-prod"]
+            ASP1 --> WEBAPP["App Service<br/>fis-web-prod"]
+            FUNC["Function App<br/>fis-jobs-prod<br/>(Timer Triggers)"]
+        end
+
+        subgraph DataLayer["Data Layer"]
+            SQL["Azure SQL DB<br/>GP_Gen5_2<br/>FullInternetServices"]
+            BLOB["Storage Account<br/>fisstorageprod"]
+            REDIS["Azure Cache for Redis<br/>Basic C1"]
+        end
+
+        subgraph Security["Seguridad"]
+            KV["Key Vault<br/>fis-kv-prod"]
+            AAD["Azure AD B2C"]
+            MID["Managed Identity"]
+        end
+
+        subgraph Obs["Observabilidad"]
+            AI["Application Insights"]
+            LA["Log Analytics"]
+            ALERT["Monitor Alerts"]
+        end
+
+        subgraph DevOps["DevOps"]
+            ACR["Container Registry"]
+            DEVOPS["Azure DevOps Pipelines"]
+        end
+    end
+
+    USER1 -->|HTTPS WinForms| APIM
+    USER2 -->|HTTPS WinForms| APIM
+    USER3 -->|HTTPS Web| FD --> APIM
+
+    APIM --> WEBAPI
+    APIM --> WEBAPP
+
+    WEBAPI --> SQL
+    WEBAPI --> BLOB
+    WEBAPI --> REDIS
+    WEBAPI --> KV
+    WEBAPI --> AAD
+    WEBAPI -.uses.-> MID
+
+    FUNC --> SQL
+    FUNC --> BLOB
+    WEBAPI --> AI
+    FUNC --> AI
+    AI --> LA --> ALERT
+
+    DEVOPS --> ACR
+    DEVOPS -.deploy.-> WEBAPI
+    DEVOPS -.deploy.-> WEBAPP
+    DEVOPS -.deploy.-> FUNC

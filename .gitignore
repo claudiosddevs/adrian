@@ -1,0 +1,188 @@
+# =============================================================================
+#  .gitignore - Full Internet Services
+#  Mantiene fuera del repositorio todo lo que NO sea código fuente o documentación.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  .NET / C# build output
+# -----------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Pp]ublish/
+[Bb]uild/
+[Bb]uildResults/
+[Aa]rtifacts/
+*.binlog
+
+# -----------------------------------------------------------------------------
+#  Compilation / debug symbols
+# -----------------------------------------------------------------------------
+*.dll
+*.exe
+*.pdb
+*.lib
+*.lib.meta
+*.exp
+*.ilk
+*.idb
+*.iobj
+*.ipdb
+*.tlog
+*.vshost.exe
+*.vshost.exe.config
+*.vshost.exe.manifest
+*.cache
+
+# -----------------------------------------------------------------------------
+#  Visual Studio
+# -----------------------------------------------------------------------------
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.psess
+*.vsp
+*.vspx
+*.sap
+*.opendb
+*.VC.db
+*.VC.opendb
+*.dbmdl
+*.jfm
+
+# -----------------------------------------------------------------------------
+#  JetBrains Rider / ReSharper
+# -----------------------------------------------------------------------------
+.idea/
+*.DotSettings.user
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotCover
+*.dotCover
+
+# -----------------------------------------------------------------------------
+#  NuGet
+# -----------------------------------------------------------------------------
+packages/
+*.nupkg
+*.snupkg
+*.nuspec.bak
+.nuget/
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
+
+# -----------------------------------------------------------------------------
+#  Test coverage / results
+# -----------------------------------------------------------------------------
+[Tt]est[Rr]esult*/
+[Cc]overage*/
+*.coverage
+*.coveragexml
+coverage.opencover.xml
+coverage.cobertura.xml
+*.trx
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# -----------------------------------------------------------------------------
+#  Application secrets / local configuration
+# -----------------------------------------------------------------------------
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+*.pfx
+*.snk
+*.p12
+*.cer
+*.crt
+*.key
+*.pem
+launchSettings.local.json
+
+# -----------------------------------------------------------------------------
+#  Entity Framework Core local DB
+# -----------------------------------------------------------------------------
+*.mdf
+*.ldf
+*.ndf
+
+# -----------------------------------------------------------------------------
+#  Logs
+# -----------------------------------------------------------------------------
+logs/
+log/
+*.log
+*.log.*
+
+# -----------------------------------------------------------------------------
+#  Node.js (Mermaid CLI usa esto al ejecutar npx)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+.npm/
+
+# -----------------------------------------------------------------------------
+#  Mermaid CLI working files
+# -----------------------------------------------------------------------------
+docs/diagrams/.mermaid-config.json
+docs/diagrams/.puppeteer/
+.puppeteer-cache/
+
+# -----------------------------------------------------------------------------
+#  WinForms / WPF specific
+# -----------------------------------------------------------------------------
+*.ResolveAssemblyReference.cache
+*.[Pp]ublish.xml
+PublishProfiles/
+
+# -----------------------------------------------------------------------------
+#  Docker (futuro)
+# -----------------------------------------------------------------------------
+*.docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+#  Azure
+# -----------------------------------------------------------------------------
+*.azurePubxml
+*.publishsettings
+csx/
+ecf/
+rcf/
+PublishScripts/
+
+# -----------------------------------------------------------------------------
+#  OS / Editor temporary files
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.lnk
+
+# -----------------------------------------------------------------------------
+#  Documentos / archivos pesados que no deben ir al repositorio
+#  (el PDF original es muy grande; queda como anexo local)
+# -----------------------------------------------------------------------------
+Proyecto FINAL.pdf
+*.pdf
+!docs/**/*.pdf
+
+# -----------------------------------------------------------------------------
+#  Anti-patterns: cosas que se generan y NO van al repo
+# -----------------------------------------------------------------------------
+ScaffoldingReadMe.txt
+*.psess
+*.diagsession
+*.lock.json

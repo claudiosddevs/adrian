@@ -1,0 +1,27 @@
+classDiagram
+    class IClientesView {
+        <<interface>>
+        +MostrarClientes(lista)
+        +ObtenerFiltro() string
+        +event BuscarClicked
+    }
+
+    class frmClientes {
+        -presenter: ClientesPresenter
+    }
+
+    class ClientesPresenter {
+        -view: IClientesView
+        -api: IFisApiClient
+        +CargarAsync()
+    }
+
+    class IFisApiClient {
+        <<interface>>
+        +ListarClientes(filtro)
+    }
+
+    frmClientes ..|> IClientesView
+    frmClientes --> ClientesPresenter
+    ClientesPresenter --> IClientesView
+    ClientesPresenter --> IFisApiClient

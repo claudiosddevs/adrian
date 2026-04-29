@@ -1,0 +1,49 @@
+flowchart TB
+    subgraph RG["Resource Group: rg-fis-prod-brs"]
+        subgraph Net["Networking"]
+            FD["Front Door + WAF Premium"]
+            APIM["API Management Std v2"]
+            VNET["VNet (privacy)"]
+        end
+
+        subgraph Compute["Compute"]
+            ASP["App Service Plan P1v3"]
+            APP_API["App Service - fis-api-prod"]
+            APP_WEB["App Service - fis-web-prod"]
+            FUNC["Function App - fis-jobs-prod<br/>Timer: 02:00 corte mora<br/>Timer: 06:00 alertas"]
+        end
+
+        subgraph Data["Data"]
+            SQL["Azure SQL DB GP_Gen5_2<br/>FullInternetServices"]
+            STG["Storage Account<br/>fisstgprod (LRS+GZRS backup)"]
+            REDIS["Redis Cache Basic C1"]
+        end
+
+        subgraph Sec["Seguridad"]
+            KV["Key Vault - fis-kv-prod"]
+            B2C["Azure AD B2C tenant"]
+            MI["Managed Identity"]
+            DEFENDER["Defender for SQL"]
+        end
+
+        subgraph Obs["Observabilidad"]
+            AI["Application Insights"]
+            LA["Log Analytics Workspace"]
+            MON["Monitor + Alerts"]
+        end
+    end
+
+    subgraph Devs["DevOps Center"]
+        REPO["Azure Repos / GitHub"]
+        PIPE["Azure Pipelines"]
+        ACR["Container Registry"]
+    end
+
+    FD --> APIM --> APP_API
+    FD --> APP_WEB
+    APP_API & APP_WEB & FUNC --> SQL & STG & REDIS
+    APP_API & APP_WEB & FUNC -.MI.-> KV
+    APP_API --> B2C
+    APP_API & APP_WEB & FUNC --> AI
+    AI --> LA --> MON
+    PIPE --> ACR -.deploy.-> APP_API & APP_WEB & FUNC

@@ -1,0 +1,7 @@
+flowchart LR
+    DEV["Development<br/>1 RG · servicios baratos"]
+    QA["QA / Staging<br/>1 RG · espejo reducido"]
+    PROD["Production<br/>1 RG · alta disponibilidad"]
+
+    DEV -->|merge a develop| QA
+    QA -->|tag de release| PROD

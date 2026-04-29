@@ -1,0 +1,19 @@
+flowchart LR
+    subgraph Mono["Monolito Modular - Hoy"]
+        AUTH[Auth]
+        CLI[Clientes]
+        CON[Contratos]
+        PAG[Pagos]
+        REC[Reclamos]
+        REP[Reportes]
+    end
+    Mono --> SQL[(Azure SQL)]
+
+    subgraph Migra["Roadmap - cuando aparezcan presiones"]
+        MS_AUTH[ms-auth]
+        MS_PAG[ms-pagos]
+        MS_REC[ms-reclamos]
+        OTROS[ms-...]
+    end
+
+    Mono -.evolve.-> Migra

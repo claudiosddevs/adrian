@@ -1,0 +1,6 @@
+flowchart LR
+    REQ[Request] --> CACHE{Cache?}
+    CACHE -->|HIT| RESP[Response]
+    CACHE -->|MISS| DB[(SQL)]
+    DB --> STORE[Set in Cache]
+    STORE --> RESP

@@ -1,0 +1,54 @@
+flowchart LR
+    subgraph WinForms["FIS.Desktop"]
+        UI["Formularios (Vistas)"]
+        APICLIENT["IFisApiClient<br/>(Refit)"]
+        TOKEN["TokenStore<br/>(memoria + DPAPI)"]
+        SESION["SesionUsuario"]
+    end
+
+    subgraph WebApp["Cliente Web (futuro)"]
+        RAZOR["Razor Pages / Blazor"]
+        WEBSVC["HttpClient tipado"]
+    end
+
+    subgraph API["FIS.Api"]
+        AUTHC["AuthController"]
+        CLIC["ClientesController"]
+        OTROS["...Controllers"]
+        MID["Middleware<br/>JWT · RBAC · Logging<br/>Exception Handler"]
+    end
+
+    subgraph App["FIS.Application"]
+        UC1["LoginCommand<br/>+ Handler"]
+        UC2["ListarClientesQuery<br/>+ Handler"]
+        VALID["LoginCommandValidator<br/>(FluentValidation)"]
+    end
+
+    subgraph Domain["FIS.Domain"]
+        D_USR["Usuario / Rol"]
+        D_CLI["Cliente"]
+        DS_MORA["CalculadoraMora"]
+    end
+
+    subgraph Infra["FIS.Infrastructure"]
+        DBCTX["FisDbContext<br/>(EF Core)"]
+        REPOS["UsuarioRepository<br/>ClienteRepository"]
+        JWTSVC["JwtTokenService"]
+        HASH["BCryptPasswordHasher"]
+    end
+
+    SQL[("Azure SQL")]
+    BLOB[("Azure Blob")]
+    REDIS[("Azure Redis")]
+
+    UI --> APICLIENT --> MID
+    RAZOR --> WEBSVC --> MID
+    MID --> AUTHC & CLIC & OTROS
+    AUTHC --> UC1
+    CLIC --> UC2
+    UC1 -.validates.-> VALID
+    UC1 & UC2 --> Domain
+    UC1 & UC2 --> REPOS
+    REPOS --> DBCTX --> SQL
+    JWTSVC --> AUTHC
+    HASH --> UC1

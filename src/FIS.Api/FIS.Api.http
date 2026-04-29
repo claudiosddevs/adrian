@@ -1,0 +1,6 @@
+@FIS.Api_HostAddress = http://localhost:5077
+
+GET {{FIS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,11 @@
+graph LR
+    API[FIS.Api] --> APP[FIS.Application]
+    API --> INFRA[FIS.Infrastructure]
+    APP --> DOM[FIS.Domain]
+    APP --> CON[FIS.Contracts]
+    INFRA --> DOM
+    INFRA --> APP
+    DESK[FIS.Desktop] --> CON
+    TEST_DOM[FIS.Domain.Tests] --> DOM
+    TEST_APP[FIS.Application.Tests] --> APP
+    TEST_INT[FIS.Api.IntegrationTests] --> API

@@ -1,0 +1,8 @@
+flowchart LR
+    APP[FIS.Api] -->|Serilog| AI[Application Insights]
+    APP -->|Console sink| STDOUT["stdout (Dev)"]
+    APP -->|Blob sink| BLOB["Blob Storage<br/>(archivado 90d)"]
+    AI --> LA[Log Analytics]
+    LA --> KQL["Kusto Queries<br/>Dashboards"]
+    LA --> ALERTS["Alertas<br/>error rate · latency"]
+    AI --> APM["APM<br/>Dependencies · End-to-end"]

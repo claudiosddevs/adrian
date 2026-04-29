@@ -1,0 +1,19 @@
+flowchart TD
+    QUAL[Calidad del Producto]
+    QUAL --> OP[Operación]
+    QUAL --> REV[Revisión]
+    QUAL --> TRA[Transición]
+
+    OP --> CORR[Corrección<br/>Tests + Validators]
+    OP --> FIAB[Fiabilidad<br/>SLA + retries]
+    OP --> EFIC[Eficiencia<br/>Índices + Cache]
+    OP --> INTEG[Integridad<br/>RBAC + cifrado]
+    OP --> USA[Usabilidad<br/>UI por rol]
+
+    REV --> MANT[Mantenibilidad<br/>Clean Arch]
+    REV --> FLEX[Flexibilidad<br/>CQRS + DI]
+    REV --> CHECK[Checkability<br/>Tests + xUnit]
+
+    TRA --> PORT[Portabilidad<br/>.NET 9 cross-plat]
+    TRA --> REUS[Reusabilidad<br/>Contracts compartidos]
+    TRA --> INTER[Interoperabilidad<br/>API REST + OpenAPI]

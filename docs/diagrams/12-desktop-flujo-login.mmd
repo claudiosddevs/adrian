@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor Admin
+    participant FL as frmLogin
+    participant Refit as IFisApiClient
+    participant API as /api/v1/auth/login
+    participant TS as TokenStore
+    participant SU as SesionUsuario
+    participant FD as frmDashboard
+
+    Admin->>FL: usuario + password
+    FL->>Refit: Login(req)
+    Refit->>API: POST + JSON
+    API-->>Refit: 200 + TokenResponse
+    Refit-->>FL: ApiResponse<TokenResponse>
+    FL->>TS: Save(accessToken, ...)
+    FL->>SU: Establecer(userInfo)
+    FL->>FD: Show()
+    Admin->>FD: Click "Listar Clientes"
+    FD->>Refit: ListarClientes()
+    Refit->>API: GET /clientes con Bearer token
+    API-->>Refit: 200 + lista
+    Refit-->>FD: ApiResponse<PagedResult<ClienteDto>>
+    FD-->>Admin: DataGridView poblado

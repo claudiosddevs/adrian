@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant Cliente
+    participant API as AuthController
+    participant Repo as UsuarioRepository
+    participant Hash as BCryptHasher
+    participant JWT as JwtTokenService
+
+    Cliente->>API: POST /auth/login {username, password}
+    API->>Repo: GetByUsernameAsync()
+    Repo-->>API: Usuario (con Rol)
+    API->>API: ¿Activo? ¿No bloqueado?
+    API->>Hash: Verify(password, hash)
+    Hash-->>API: true
+    API->>JWT: GenerateAccessToken(usuario)
+    JWT-->>API: {accessToken, expiresAt}
+    API-->>Cliente: 200 + ApiResponse<TokenResponse>

@@ -1,0 +1,16 @@
+gitGraph
+    commit id: "init"
+    branch develop
+    checkout develop
+    commit id: "feature/login"
+    branch feature/login
+    commit id: "wip"
+    commit id: "wip2"
+    checkout develop
+    merge feature/login
+    branch release/1.0
+    commit id: "rc1"
+    checkout main
+    merge release/1.0 tag: "v1.0.0"
+    checkout develop
+    commit id: "feature/pagos"
