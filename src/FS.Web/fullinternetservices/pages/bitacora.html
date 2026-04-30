@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitácora — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">📒 Bitácora de Operaciones</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador');
+renderSidebar('bitacora');
+
+const ACCION_ICONS = {
+  'LOGIN': '🔑', 'LOGOUT': '🚪',
+  'PAGO_REGISTRADO': '💳', 'PAGO_ANULADO': '❌',
+  'RECLAMO_CREADO': '📝', 'RECLAMO_ATENDIDO': '🔧', 'RECLAMO_RESUELTO': '✅',
+  'CLIENTE_CREADO': '👤', 'CLIENTE_EDITADO': '✏️',
+};
+
+async function loadBitacora() {
+  const logs = await API.getBitacora();
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Bitácora de Operaciones</h2><p>Registro de todas las acciones realizadas en el sistema (RF17)</p></div>
+        <span class="badge badge--cyan">${logs.length} registros</span>
+      </div>
+
+      <div class="alert alert--info mb-3">
+        <span>ℹ</span> La bitácora registra automáticamente todas las operaciones críticas: inicios de sesión, pagos, cambios de estado y modificaciones de datos.
+      </div>
+
+      <div class="flex gap-2 mb-2" style="flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <span class="search-bar__icon">🔍</span>
+          <input class="form-input" id="searchLog" placeholder="Buscar en descripción o entidad..." oninput="filterLogs()" style="width:100%">
+        </div>
+        <select class="form-select" id="entidadFilter" onchange="filterLogs()" style="width:150px">
+          <option value="">Todas las entidades</option>
+          <option value="Sistema">Sistema</option>
+          <option value="Pagos">Pagos</option>
+          <option value="Reclamos">Reclamos</option>
+          <option value="Clientes">Clientes</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>#</th><th>Fecha y Hora</th><th>Usuario</th>
+            <th>Acción</th><th>Entidad</th><th>Descripción</th>
+          </tr></thead>
+          <tbody id="logsTbody">
+            ${logs.map((l, i) => {
+              const usuario = DB.usuarios.find(u => u.id === l.usuarioId);
+              const icon = ACCION_ICONS[l.accion] || '📌';
+              const dt = new Date(l.fecha);
+              return `
+              <tr data-search="${l.descripcion.toLowerCase()} ${l.entidad.toLowerCase()}" data-entidad="${l.entidad}">
+                <td class="mono" style="font-size:0.75rem;color:var(--text-muted)">${String(logs.length - i).padStart(4,'0')}</td>
+                <td style="font-size:0.8rem;color:var(--text-muted);white-space:nowrap">
+                  ${dt.toLocaleDateString('es-BO')}<br>
+                  <span class="mono" style="font-size:0.72rem">${dt.toLocaleTimeString('es-BO')}</span>
+                </td>
+                <td style="font-size:0.85rem"><strong style="color:var(--white)">${usuario?.nombre?.split(' ')[0] || '—'}</strong><br><span style="font-size:0.72rem;color:var(--text-muted)">${usuario?.rol||''}</span></td>
+                <td><span class="badge badge--gray">${icon} ${l.accion}</span></td>
+                <td><span class="badge ${l.entidad==='Sistema'?'badge--blue':l.entidad==='Pagos'?'badge--green':l.entidad==='Reclamos'?'badge--yellow':'badge--cyan'}">${l.entidad}</span></td>
+                <td style="font-size:0.83rem;color:var(--text-muted)">${l.descripcion}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function filterLogs() {
+  const q   = document.getElementById('searchLog').value.toLowerCase();
+  const ent = document.getElementById('entidadFilter').value;
+  document.querySelectorAll('#logsTbody tr').forEach(tr => {
+    const mQ = !q   || tr.dataset.search.includes(q);
+    const mE = !ent || tr.dataset.entidad === ent;
+    tr.style.display = mQ && mE ? '' : 'none';
+  });
+}
+
+loadBitacora();
+</script>
+</body>
+</html>

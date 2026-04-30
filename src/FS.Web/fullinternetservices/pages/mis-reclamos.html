@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Reclamos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .reclamo-card {
+      background: var(--navy-2); border: 1px solid var(--navy-4);
+      border-radius: var(--radius); padding: 1.3rem; margin-bottom: 0.8rem;
+      transition: border-color var(--transition);
+    }
+    .reclamo-card:hover { border-color: rgba(0,212,255,0.25); }
+    .reclamo-card__header { display:flex;align-items:center;gap:1rem;margin-bottom:0.7rem; }
+    .reclamo-id { font-family:var(--mono);font-size:0.75rem;color:var(--text-muted); }
+    .reclamo-title { font-weight:700;color:var(--white);font-size:0.95rem; }
+    .reclamo-desc { font-size:0.85rem;color:var(--text-muted);margin:0.5rem 0; }
+    .reclamo-footer { display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;font-size:0.78rem;color:var(--text-muted); }
+    .tipo-label { display:flex;gap:0.5rem;align-items:center; }
+    .tipo-label span { width: 8px;height:8px;border-radius:50%; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">🎧 Mis Reclamos</div>
+      <button class="btn btn--primary btn--sm" onclick="openNewReclamo()">+ Nuevo Reclamo</button>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- NEW RECLAMO MODAL -->
+<div class="modal-overlay" id="reclamoModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title">🎧 Crear Solicitud de Soporte</div>
+      <button class="modal__close" onclick="closeModal()">✕</button>
+    </div>
+    <form id="reclamoForm" onsubmit="submitReclamo(event)" style="display:flex;flex-direction:column;gap:1rem">
+      <div class="alert alert--info"><span>ℹ</span> Nuestro equipo técnico responderá en un plazo máximo de 24 horas hábiles.</div>
+      <div class="form-group">
+        <label class="form-label">Título del Problema *</label>
+        <input type="text" class="form-input" id="rTitle" placeholder="Ej: Sin conexión a internet" required maxlength="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción Detallada *</label>
+        <textarea class="form-textarea" id="rDesc" placeholder="Describe el problema con el mayor detalle posible: cuándo empezó, qué ves en tu equipo, etc." required minlength="20"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de Problema</label>
+        <select class="form-select" id="rTipo">
+          <option value="Leve">🟢 Leve — Problema menor, funciona parcialmente</option>
+          <option value="Medio" selected>🟡 Medio — Sin servicio o muy lento</option>
+          <option value="Complejo">🔴 Complejo — Daño en equipos o corte total</option>
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn--ghost btn--full" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="btn btn--primary btn--full" id="submitBtn">Enviar Reclamo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CALIFICAR MODAL -->
+<div class="modal-overlay" id="calModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title">⭐ Calificar Servicio</div>
+      <button class="modal__close" onclick="document.getElementById('calModal').classList.remove('open')">✕</button>
+    </div>
+    <div style="text-align:center;padding:1rem">
+      <p style="margin-bottom:1.5rem">¿Cómo calificarías la atención recibida?</p>
+      <div class="stars" style="justify-content:center;margin-bottom:1.5rem" id="starContainer">
+        ${[1,2,3,4,5].map(n=>`<span class="star" data-val="${n}" onclick="setStar(${n})">☆</span>`).join('')}
+      </div>
+      <button class="btn btn--primary btn--full" id="submitCalBtn" onclick="submitCalificacion()" disabled>
+        Enviar Calificación
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Cliente');
+const user = Auth.currentUser();
+renderSidebar('reclamos');
+
+let calReclamoId = null;
+let selectedStars = 0;
+
+async function loadReclamos() {
+  const reclamos = await API.getReclamosByCliente(user.clienteId);
+  const stats = {
+    total: reclamos.length,
+    resueltos: reclamos.filter(r=>r.estado==='Resuelto').length,
+    enProceso: reclamos.filter(r=>r.estado==='En Proceso').length,
+    recibidos: reclamos.filter(r=>r.estado==='Recibido').length,
+  };
+
+  const estadoTimeline = {
+    'Recibido':   { icon:'📥', step:1 },
+    'En Proceso': { icon:'🔧', step:2 },
+    'Resuelto':   { icon:'✅', step:3 },
+  };
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Mis Reclamos</h2><p>Solicitudes de soporte técnico y reclamos de facturación</p></div>
+        <button class="btn btn--primary" onclick="openNewReclamo()">+ Nuevo Reclamo</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid-4 mb-3">
+        <div class="stat-card"><div class="stat-card__label">Total</div><div class="stat-card__value">${stats.total}</div><div class="stat-card__icon">🎧</div></div>
+        <div class="stat-card stat-card--yellow"><div class="stat-card__label">Recibidos</div><div class="stat-card__value">${stats.recibidos}</div><div class="stat-card__icon">📥</div></div>
+        <div class="stat-card stat-card--cyan"><div class="stat-card__label">En Proceso</div><div class="stat-card__value">${stats.enProceso}</div><div class="stat-card__icon">🔧</div></div>
+        <div class="stat-card stat-card--green"><div class="stat-card__label">Resueltos</div><div class="stat-card__value">${stats.resueltos}</div><div class="stat-card__icon">✅</div></div>
+      </div>
+
+      <!-- Reclamos list -->
+      ${reclamos.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-state__icon">🎧</div>
+          <h3>No tienes reclamos</h3>
+          <p>¿Tienes algún problema con tu servicio? Crea una solicitud.</p>
+          <button class="btn btn--primary mt-2" onclick="openNewReclamo()">Crear mi primer reclamo</button>
+        </div>
+      ` : reclamos.map(r => {
+        const tl = estadoTimeline[r.estado] || {};
+        const step = tl.step || 1;
+        return `
+        <div class="reclamo-card">
+          <div class="reclamo-card__header">
+            <span class="reclamo-id">#REC-${String(r.id).padStart(4,'0')}</span>
+            ${tipoBadge(r.tipo)}
+            ${estadoBadge(r.estado)}
+            <span class="reclamo-footer" style="margin-left:auto">${formatDate(r.fecha)}</span>
+          </div>
+          <div class="reclamo-title">${r.titulo}</div>
+          <div class="reclamo-desc">${r.descripcion}</div>
+
+          <!-- Progress indicator -->
+          <div class="steps mt-2">
+            <div class="step ${step>=1?'done':''}">
+              <div class="step__num">${step>1?'✓':'1'}</div>
+              <div class="step__label">Recibido</div>
+            </div>
+            <div class="step__line"></div>
+            <div class="step ${step>=2?(step>2?'done':'active'):''}">
+              <div class="step__num">${step>2?'✓':'2'}</div>
+              <div class="step__label">En Proceso</div>
+            </div>
+            <div class="step__line"></div>
+            <div class="step ${step>=3?'done':''}">
+              <div class="step__num">${step>2?'✓':'3'}</div>
+              <div class="step__label">Resuelto</div>
+            </div>
+          </div>
+
+          ${r.observacion ? `<div class="alert alert--success mt-2" style="margin-bottom:0"><span>🔧</span> <span><strong>Técnico:</strong> ${r.observacion}</span></div>` : ''}
+          ${r.tecnicoId ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem">👤 Técnico asignado</div>` : ''}
+
+          <!-- Rating -->
+          ${r.estado==='Resuelto' ? `
+          <div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid var(--navy-4)">
+            ${r.calificacion ?
+              `<div style="font-size:0.82rem;color:var(--text-muted)">Tu calificación: ${'⭐'.repeat(r.calificacion)}${'☆'.repeat(5-r.calificacion)} (${r.calificacion}/5)</div>` :
+              `<div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap">
+                <span style="font-size:0.82rem;color:var(--text-muted)">¿Quedaste satisfecho?</span>
+                <button class="btn btn--secondary btn--sm" onclick="openCalModal(${r.id})">⭐ Calificar</button>
+              </div>`}
+          </div>` : ''}
+        </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function openNewReclamo() { document.getElementById('reclamoModal').classList.add('open'); }
+function closeModal()     { document.getElementById('reclamoModal').classList.remove('open'); }
+
+async function submitReclamo(e) {
+  e.preventDefault();
+  const title = document.getElementById('rTitle').value.trim();
+  const desc  = document.getElementById('rDesc').value.trim();
+  const tipo  = document.getElementById('rTipo').value;
+  if (desc.length < 20) { showToast('La descripción debe tener al menos 20 caracteres', 'error'); return; }
+  const btn = document.getElementById('submitBtn');
+  setLoading(btn, true);
+  try {
+    await API.crearReclamo(user.clienteId, title, desc, tipo);
+    closeModal();
+    showToast('✓ Tu reclamo fue enviado. Te contactaremos pronto.');
+    document.getElementById('reclamoForm').reset();
+    loadReclamos();
+  } catch(err) {
+    showToast(err.message, 'error');
+    setLoading(btn, false);
+  }
+}
+
+function openCalModal(id) {
+  calReclamoId = id; selectedStars = 0;
+  document.querySelectorAll('#starContainer .star').forEach(s => { s.textContent = '☆'; s.classList.remove('active'); });
+  document.getElementById('submitCalBtn').disabled = true;
+  document.getElementById('calModal').classList.add('open');
+}
+
+function setStar(n) {
+  selectedStars = n;
+  document.querySelectorAll('#starContainer .star').forEach((s, i) => {
+    s.textContent = i < n ? '⭐' : '☆';
+    s.classList.toggle('active', i < n);
+  });
+  document.getElementById('submitCalBtn').disabled = false;
+}
+
+async function submitCalificacion() {
+  if (!selectedStars || !calReclamoId) return;
+  try {
+    await API.calificarReclamo(calReclamoId, selectedStars);
+    document.getElementById('calModal').classList.remove('open');
+    showToast('¡Gracias por tu calificación! ' + '⭐'.repeat(selectedStars));
+    loadReclamos();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+loadReclamos();
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Pagos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .payment-method-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.7rem; }
+    .pm-btn {
+      background: var(--navy-3); border: 2px solid var(--navy-4);
+      border-radius: var(--radius-sm); padding: 0.8rem 0.5rem;
+      text-align: center; cursor: pointer; transition: all var(--transition);
+      color: var(--text-muted); font-size: 0.8rem; font-weight: 600;
+    }
+    .pm-btn:hover { border-color: var(--cyan); color: var(--white); }
+    .pm-btn.selected { border-color: var(--cyan); background: var(--cyan-glow); color: var(--cyan); }
+    .pm-btn__icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+    .receipt-card {
+      background: var(--navy-2); border: 1px solid var(--green);
+      border-radius: var(--radius); padding: 2rem; text-align: center;
+      box-shadow: 0 0 30px rgba(16,185,129,0.1);
+    }
+    .receipt-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .receipt-number { font-family: var(--mono); font-size: 1.1rem; color: var(--cyan); margin: 0.5rem 0; }
+    @media(max-width:600px){ .payment-method-grid{grid-template-columns:repeat(2,1fr)} }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">💳 Mis Pagos</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title" id="payModalTitle">Realizar Pago</div>
+      <button class="modal__close" onclick="closePayModal()">✕</button>
+    </div>
+    <div id="payModalContent"></div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title">✓ Pago Realizado</div>
+      <button class="modal__close" onclick="closeReceiptModal()">✕</button>
+    </div>
+    <div id="receiptContent"></div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Cliente');
+const user = Auth.currentUser();
+renderSidebar('pagos');
+
+let selectedMethod = null;
+let currentPago = null;
+
+async function loadPagos() {
+  const pagos = await API.getPagosByCliente(user.clienteId);
+  const contratos = await API.getContratosByCliente(user.clienteId);
+  const pendientes = pagos.filter(p => p.estado !== 'Pagado');
+  const pagados    = pagos.filter(p => p.estado === 'Pagado');
+  const enMora = pendientes.some(p => p.estado === 'Mora');
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header">
+        <h2>Mis Pagos</h2>
+        <p>Historial de pagos y mensualidades pendientes</p>
+      </div>
+
+      ${enMora ? `<div class="mora-banner">
+        <div class="mora-banner__icon">⚠️</div>
+        <div><div class="mora-banner__title">Tienes pagos en mora</div><div class="mora-banner__desc">Regulariza tu cuenta para evitar la suspensión del servicio. La mora se aplica a partir del día 12 de cada mes.</div></div>
+      </div>` : ''}
+
+      <!-- PENDING -->
+      ${pendientes.length > 0 ? `
+      <div class="section">
+        <div class="section-title mb-2">Pagos Pendientes / Mora</div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>Período</th><th>Monto</th><th>Estado</th><th>Acción</th>
+            </tr></thead>
+            <tbody>
+              ${pendientes.map(p => `
+              <tr>
+                <td><strong style="color:var(--white)">${p.mes}</strong></td>
+                <td><strong style="color:var(--white)">${formatCurrency(p.monto)}</strong></td>
+                <td>${estadoBadge(p.estado)}</td>
+                <td><button class="btn btn--primary btn--sm" onclick="openPayModal(${p.id}, '${p.mes}', ${p.monto}, ${p.contratoId})">Pagar</button></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : `<div class="alert alert--success mb-3"><span>✓</span> ¡Felicitaciones! Estás al día con todos tus pagos.</div>`}
+
+      <!-- HISTORY -->
+      <div class="section">
+        <div class="section-title mb-2">Historial de Pagos</div>
+        ${pagados.length > 0 ? `
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>Período</th><th>Fecha de Pago</th><th>Método</th><th>Monto</th><th>Estado</th><th>Recibo</th>
+            </tr></thead>
+            <tbody>
+              ${pagados.map(p => `
+              <tr>
+                <td>${p.mes}</td>
+                <td style="color:var(--text-muted)">${formatDate(p.fecha)}</td>
+                <td><span class="badge badge--gray">${p.metodo}</span></td>
+                <td><strong style="color:var(--white)">${formatCurrency(p.monto)}</strong></td>
+                <td>${estadoBadge(p.estado)}</td>
+                <td><span class="mono" style="font-size:0.8rem;color:var(--cyan)">${p.recibo}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<div class="empty-state"><div class="empty-state__icon">💳</div><h3>Sin pagos registrados</h3></div>`}
+      </div>
+    </div>
+  `;
+}
+
+function openPayModal(pagoId, mes, monto, contratoId) {
+  currentPago = { pagoId, mes, monto, contratoId };
+  selectedMethod = null;
+  document.getElementById('payModalTitle').textContent = `Pagar — ${mes}`;
+  document.getElementById('payModalContent').innerHTML = `
+    <div class="flex items-center justify-between mb-3 card" style="background:var(--navy-3);padding:1rem">
+      <span style="color:var(--text-muted)">Total a pagar:</span>
+      <span style="font-size:1.6rem;font-weight:800;color:var(--cyan)">${formatCurrency(monto)}</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Método de Pago</label>
+      <div class="payment-method-grid">
+        ${[['qr','📲','Código QR'],['transferencia','🏦','Transferencia'],['efectivo','💵','Efectivo'],['tarjeta','💳','Tarjeta']].map(([val,icon,label])=>`
+        <div class="pm-btn" data-method="${val}" onclick="selectMethod('${val}')">
+          <span class="pm-btn__icon">${icon}</span>${label}
+        </div>`).join('')}
+      </div>
+    </div>
+    <div id="methodDetail" class="mt-2"></div>
+    <button class="btn btn--primary btn--full btn--lg mt-3" id="confirmPayBtn" onclick="confirmarPago()" disabled>
+      Confirmar Pago
+    </button>
+    <p style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:0.8rem">
+      🔒 Pago seguro. Recibirás tu comprobante inmediatamente.
+    </p>
+  `;
+  document.getElementById('payModal').classList.add('open');
+}
+
+function selectMethod(method) {
+  selectedMethod = method;
+  document.querySelectorAll('.pm-btn').forEach(b => b.classList.toggle('selected', b.dataset.method === method));
+  document.getElementById('confirmPayBtn').disabled = false;
+  const methodDetails = {
+    qr: `<div class="card" style="text-align:center;padding:1.5rem;background:var(--navy-3)"><div style="font-size:3rem">📲</div><p style="margin-top:0.5rem;font-size:0.85rem">Escanea el código QR desde tu app bancaria para realizar el pago</p><div style="background:white;width:120px;height:120px;margin:1rem auto;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#333">QR Simulado</div></div>`,
+    transferencia: `<div class="card" style="background:var(--navy-3);padding:1rem;font-size:0.85rem"><div style="font-weight:700;color:var(--white);margin-bottom:0.5rem">Datos bancarios:</div><div style="color:var(--text-muted)">Banco: <span style="color:var(--white)">BNB</span></div><div style="color:var(--text-muted)">Cuenta: <span class="mono" style="color:var(--cyan)">123-4567890-0</span></div><div style="color:var(--text-muted)">Titular: <span style="color:var(--white)">Full Internet Services S.R.L.</span></div><div style="color:var(--text-muted);margin-top:0.5rem;font-size:0.78rem">⚠ Referencia: Tu N° de contrato</div></div>`,
+    efectivo: `<div class="alert alert--info"><span>📍</span> Acércate a nuestras oficinas en Av. Camacho 123, La Paz. Horario: L-V 8:00-18:00, S 9:00-13:00</div>`,
+    tarjeta: `<div style="display:flex;flex-direction:column;gap:0.8rem"><div class="form-group"><label class="form-label">Número de Tarjeta</label><input class="form-input" placeholder="1234 5678 9012 3456" maxlength="19"></div><div class="form-grid"><div class="form-group"><label class="form-label">Vencimiento</label><input class="form-input" placeholder="MM/AA" maxlength="5"></div><div class="form-group"><label class="form-label">CVV</label><input class="form-input" placeholder="123" maxlength="3" type="password"></div></div></div>`,
+  };
+  document.getElementById('methodDetail').innerHTML = methodDetails[method] || '';
+}
+
+async function confirmarPago() {
+  if (!selectedMethod) return;
+  const btn = document.getElementById('confirmPayBtn');
+  setLoading(btn, true);
+  try {
+    const result = await API.registrarPago(currentPago.contratoId, user.clienteId, currentPago.mes, selectedMethod, currentPago.monto);
+    closePayModal();
+    showReceipt(result);
+    loadPagos();
+  } catch(e) {
+    showToast(e.message, 'error');
+    setLoading(btn, false);
+  }
+}
+
+function showReceipt(pago) {
+  document.getElementById('receiptContent').innerHTML = `
+    <div class="receipt-card">
+      <div class="receipt-icon">✅</div>
+      <h3 style="color:var(--white)">¡Pago Exitoso!</h3>
+      <p style="margin:0.5rem 0">Tu servicio se mantiene activo</p>
+      <div class="receipt-number">${pago.recibo}</div>
+      <div style="background:var(--navy-3);border-radius:var(--radius-sm);padding:1rem;margin-top:1rem;text-align:left;font-size:0.85rem">
+        <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--navy-4)">
+          <span style="color:var(--text-muted)">Período:</span><span style="color:var(--white)">${pago.mes}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--navy-4)">
+          <span style="color:var(--text-muted)">Monto:</span><span style="color:var(--cyan);font-weight:700">${formatCurrency(pago.monto)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--navy-4)">
+          <span style="color:var(--text-muted)">Método:</span><span style="color:var(--white)">${pago.metodo}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0.3rem 0">
+          <span style="color:var(--text-muted)">Fecha:</span><span style="color:var(--white)">${formatDate(pago.fecha)}</span>
+        </div>
+      </div>
+      <button class="btn btn--ghost btn--full mt-2" onclick="closeReceiptModal()">Cerrar</button>
+    </div>
+  `;
+  document.getElementById('receiptModal').classList.add('open');
+}
+
+function closePayModal()    { document.getElementById('payModal').classList.remove('open'); }
+function closeReceiptModal(){ document.getElementById('receiptModal').classList.remove('open'); }
+
+loadPagos();
+</script>
+</body>
+</html>

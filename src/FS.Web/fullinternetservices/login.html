@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión — Full Internet Services</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      overflow: hidden;
+    }
+    .login-bg {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 80% 20%, rgba(0,212,255,0.07) 0%, transparent 60%),
+                  radial-gradient(ellipse 50% 70% at 20% 80%, rgba(59,130,246,0.05) 0%, transparent 60%);
+    }
+    .login-grid {
+      position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .login-wrap {
+      position: relative; z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      min-height: 100vh;
+      width: 100%;
+    }
+    .login-left {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 4rem 3rem 4rem 5rem;
+    }
+    .login-left__logo { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 3rem; }
+    .login-left__logo-icon { width: 42px; height: 42px; background: var(--cyan); border-radius: 10px; display:flex;align-items:center;justify-content:center; font-weight:900; color:var(--navy); font-size:1.1rem; }
+    .login-left__logo-text { font-weight: 800; font-size: 1.1rem; color: var(--white); }
+    .login-left__logo-sub { font-size: 0.72rem; color: var(--text-muted); }
+    .login-left h1 { color: var(--white); margin-bottom: 1rem; }
+    .login-left h1 span { color: var(--cyan); }
+    .login-left__features { display: flex; flex-direction: column; gap: 1rem; margin-top: 2.5rem; }
+    .login-left__feat { display: flex; align-items: center; gap: 0.8rem; }
+    .login-left__feat-icon {
+      width: 36px; height: 36px;
+      background: var(--navy-3); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .login-left__feat-text { font-size: 0.88rem; color: var(--text-muted); }
+    .login-left__feat-text strong { color: var(--white); display: block; font-size: 0.92rem; }
+
+    .login-right {
+      background: var(--navy-2);
+      border-left: 1px solid var(--navy-4);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 3rem 2.5rem;
+    }
+    .login-form-header { margin-bottom: 2rem; }
+    .login-form-header h2 { color: var(--white); font-size: 1.6rem; }
+    .login-form-header p { color: var(--text-muted); font-size: 0.88rem; margin-top: 0.3rem; }
+
+    .login-form { display: flex; flex-direction: column; gap: 1.2rem; }
+    .login-divider { display: flex; align-items: center; gap: 1rem; margin: 0.5rem 0; }
+    .login-divider span { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+    .login-divider::before, .login-divider::after { content:''; flex:1; height:1px; background:var(--navy-4); }
+
+    .demo-users {
+      background: var(--navy-3);
+      border: 1px solid var(--navy-4);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+    }
+    .demo-users__title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.7rem; }
+    .demo-user { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; cursor: pointer; border-radius: 4px; padding: 0.4rem 0.5rem; transition: background var(--transition); }
+    .demo-user:hover { background: rgba(255,255,255,0.05); }
+    .demo-user__info { display: flex; align-items: center; gap: 0.6rem; }
+    .demo-user__avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--navy-4); display:flex;align-items:center;justify-content:center; font-size:0.7rem; font-weight:700; color:var(--cyan); }
+    .demo-user__name  { font-size: 0.82rem; color: var(--white); font-weight: 500; }
+    .demo-user__role  { font-size: 0.7rem; color: var(--text-muted); }
+    .demo-user__fill  { font-size: 0.72rem; color: var(--cyan); opacity: 0.7; }
+
+    .login-footer { text-align: center; margin-top: 1.5rem; }
+    .login-footer a { font-size: 0.82rem; color: var(--cyan); }
+
+    .input-password-wrap { position: relative; }
+    .input-password-wrap input { padding-right: 2.8rem; }
+    .toggle-pw {
+      position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%);
+      background: none; color: var(--text-muted); font-size: 1rem;
+      transition: color var(--transition); cursor: pointer;
+    }
+    .toggle-pw:hover { color: var(--white); }
+
+    @media (max-width: 900px) {
+      .login-wrap { grid-template-columns: 1fr; }
+      .login-left { display: none; }
+      .login-right { padding: 2rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="login-bg"></div>
+<div class="login-grid"></div>
+
+<div class="login-wrap">
+  <!-- LEFT PANEL -->
+  <div class="login-left">
+    <div class="login-left__logo">
+      <div class="login-left__logo-icon">FI</div>
+      <div>
+        <div class="login-left__logo-text">Full Internet Services</div>
+        <div class="login-left__logo-sub">Portal de Clientes y Administración</div>
+      </div>
+    </div>
+    <h1>Tu internet,<br>bajo <span>tu control</span></h1>
+    <p style="color:var(--text-muted);max-width:420px">Gestiona tu cuenta, realiza pagos, consulta el estado de tu servicio y crea tickets de soporte desde un solo lugar.</p>
+    <div class="login-left__features">
+      <div class="login-left__feat">
+        <div class="login-left__feat-icon">💳</div>
+        <div class="login-left__feat-text"><strong>Pagos en línea</strong>Paga tu servicio con QR, tarjeta o transferencia bancaria</div>
+      </div>
+      <div class="login-left__feat">
+        <div class="login-left__feat-icon">📋</div>
+        <div class="login-left__feat-text"><strong>Mis contratos</strong>Visualiza el detalle de tu plan activo y fechas de vigencia</div>
+      </div>
+      <div class="login-left__feat">
+        <div class="login-left__feat-icon">🎧</div>
+        <div class="login-left__feat-text"><strong>Soporte técnico</strong>Crea y rastrea tus reclamos en tiempo real</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL - LOGIN FORM -->
+  <div class="login-right">
+    <div class="login-form-header">
+      <h2>Bienvenido 👋</h2>
+      <p>Ingresa tus credenciales para acceder al portal</p>
+    </div>
+
+    <form class="login-form" id="loginForm" onsubmit="handleLogin(event)">
+      <div id="loginError" class="alert alert--error" style="display:none">
+        <span>⚠️</span>
+        <span id="loginErrorMsg">Error</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Usuario</label>
+        <input type="text" class="form-input" id="username" placeholder="Tu nombre de usuario" autocomplete="username" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <div class="input-password-wrap">
+          <input type="password" class="form-input" id="password" placeholder="Tu contraseña" autocomplete="current-password" required>
+          <button type="button" class="toggle-pw" id="togglePw" onclick="togglePassword()">👁</button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--full btn--lg" id="loginBtn">
+        Ingresar al sistema
+      </button>
+    </form>
+
+    <div class="login-divider"><span>Cuentas de prueba</span></div>
+
+    <div class="demo-users">
+      <div class="demo-users__title">Haz clic para ingresar automáticamente</div>
+      <div class="demo-user" onclick="fillLogin('cliente1','Cliente123*')">
+        <div class="demo-user__info">
+          <div class="demo-user__avatar">MG</div>
+          <div>
+            <div class="demo-user__name">María García</div>
+            <div class="demo-user__role"><span class="badge badge--cyan" style="font-size:0.65rem">Cliente</span></div>
+          </div>
+        </div>
+        <span class="demo-user__fill">→ Llenar</span>
+      </div>
+      <div class="demo-user" onclick="fillLogin('admin','Admin123*')">
+        <div class="demo-user__info">
+          <div class="demo-user__avatar" style="color:var(--red)">AD</div>
+          <div>
+            <div class="demo-user__name">Administrador</div>
+            <div class="demo-user__role"><span class="badge badge--red" style="font-size:0.65rem">Admin</span></div>
+          </div>
+        </div>
+        <span class="demo-user__fill">→ Llenar</span>
+      </div>
+      <div class="demo-user" onclick="fillLogin('cajero1','Cajero123*')">
+        <div class="demo-user__info">
+          <div class="demo-user__avatar" style="color:var(--yellow)">CA</div>
+          <div>
+            <div class="demo-user__name">Carlos Mendoza (Cajero)</div>
+            <div class="demo-user__role"><span class="badge badge--yellow" style="font-size:0.65rem">Cajero</span></div>
+          </div>
+        </div>
+        <span class="demo-user__fill">→ Llenar</span>
+      </div>
+      <div class="demo-user" onclick="fillLogin('tecnico1','Tecnico123*')">
+        <div class="demo-user__info">
+          <div class="demo-user__avatar" style="color:var(--blue)">LT</div>
+          <div>
+            <div class="demo-user__name">Luis Torrez (Técnico)</div>
+            <div class="demo-user__role"><span class="badge badge--blue" style="font-size:0.65rem">Técnico</span></div>
+          </div>
+        </div>
+        <span class="demo-user__fill">→ Llenar</span>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      <a href="index.html">← Volver al inicio</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  // Redirect if already logged in
+  if (Auth.isLoggedIn()) {
+    const user = Auth.currentUser();
+    redirectByRole(user.rol);
+  }
+
+  function redirectByRole(rol) {
+    const map = {
+      'Cliente':        'pages/dashboard-cliente.html',
+      'Administrador':  'pages/dashboard-admin.html',
+      'Cajero':         'pages/dashboard-admin.html',
+      'Tecnico':        'pages/dashboard-tecnico.html',
+    };
+    window.location.href = map[rol] || 'pages/dashboard-cliente.html';
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const errDiv = document.getElementById('loginError');
+    const errMsg = document.getElementById('loginErrorMsg');
+    errDiv.style.display = 'none';
+    setLoading(btn, true);
+    try {
+      const user = await API.login(
+        document.getElementById('username').value.trim(),
+        document.getElementById('password').value
+      );
+      showToast(`¡Bienvenido, ${user.nombre.split(' ')[0]}!`);
+      setTimeout(() => redirectByRole(user.rol), 500);
+    } catch(err) {
+      errMsg.textContent = err.message;
+      errDiv.style.display = 'flex';
+      setLoading(btn, false);
+    }
+  }
+
+  function fillLogin(user, pass) {
+    document.getElementById('username').value = user;
+    document.getElementById('password').value = pass;
+    document.getElementById('username').focus();
+    showToast('Credenciales llenadas. Haz clic en Ingresar.', 'info');
+  }
+
+  function togglePassword() {
+    const inp = document.getElementById('password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+</script>
+</body>
+</html>

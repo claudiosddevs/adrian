@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">💳 Gestión de Pagos</div>
+      <button class="btn btn--primary btn--sm" onclick="openRegModal()">+ Registrar Pago</button>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- REGISTER PAYMENT MODAL -->
+<div class="modal-overlay" id="regModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title">Registrar Pago</div>
+      <button class="modal__close" onclick="document.getElementById('regModal').classList.remove('open')">✕</button>
+    </div>
+    <form id="regForm" onsubmit="submitPago(event)" style="display:flex;flex-direction:column;gap:1rem">
+      <div class="form-group">
+        <label class="form-label">Cliente *</label>
+        <select class="form-select" id="rCliente" onchange="loadClienteContratos()" required>
+          <option value="">Seleccionar cliente...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Período (Mes) *</label>
+        <input type="text" class="form-input" id="rMes" placeholder="Ej: Marzo 2025" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monto (Bs.) *</label>
+        <input type="number" class="form-input" id="rMonto" placeholder="0.00" step="0.01" min="1" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Método de Pago *</label>
+        <select class="form-select" id="rMetodo" required>
+          <option value="">Seleccionar...</option>
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Transferencia">🏦 Transferencia</option>
+          <option value="QR">📲 Código QR</option>
+          <option value="Tarjeta">💳 Tarjeta</option>
+        </select>
+      </div>
+      <div id="contratoInfo" style="display:none" class="alert alert--info">
+        <span>📋</span><span id="contratoInfoText"></span>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn--ghost btn--full" onclick="document.getElementById('regModal').classList.remove('open')">Cancelar</button>
+        <button type="submit" class="btn btn--primary btn--full" id="regBtn">Registrar Pago</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador','Cajero');
+renderSidebar('pagos');
+
+async function loadPagos() {
+  const pagos = await API.getAllPagos();
+  const totalRecaudado = pagos.filter(p=>p.estado==='Pagado').reduce((s,p)=>s+p.monto,0);
+  const totalMora      = pagos.filter(p=>p.estado==='Mora').reduce((s,p)=>s+p.monto,0);
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Pagos</h2><p>Registro y gestión de pagos del sistema</p></div>
+        <button class="btn btn--primary" onclick="openRegModal()">+ Registrar Pago</button>
+      </div>
+
+      <div class="grid-4 mb-3">
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__label">Total Recaudado</div>
+          <div class="stat-card__value" style="font-size:1.2rem">${formatCurrency(totalRecaudado)}</div>
+          <div class="stat-card__icon">💰</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__label">Total en Mora</div>
+          <div class="stat-card__value" style="font-size:1.2rem">${formatCurrency(totalMora)}</div>
+          <div class="stat-card__icon">⚠️</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Pagos Realizados</div>
+          <div class="stat-card__value">${pagos.filter(p=>p.estado==='Pagado').length}</div>
+          <div class="stat-card__icon">✅</div>
+        </div>
+        <div class="stat-card stat-card--yellow">
+          <div class="stat-card__label">Pendientes/Mora</div>
+          <div class="stat-card__value">${pagos.filter(p=>p.estado!=='Pagado').length}</div>
+          <div class="stat-card__icon">⏳</div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="flex gap-2 mb-2" style="flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <span class="search-bar__icon">🔍</span>
+          <input class="form-input" id="searchPago" placeholder="Buscar cliente, período, recibo..." oninput="filterPagos()" style="width:100%">
+        </div>
+        <select class="form-select" id="estadoFilter" onchange="filterPagos()" style="width:160px">
+          <option value="">Todos los estados</option>
+          <option value="Pagado">Pagado</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Mora">Mora</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="pagosTable">
+          <thead><tr>
+            <th>Recibo</th><th>Cliente</th><th>Período</th><th>Método</th>
+            <th>Monto</th><th>Fecha</th><th>Estado</th>
+          </tr></thead>
+          <tbody id="pagosTbody">
+            ${pagos.map(p => `
+            <tr data-search="${(p.cliente?.nombre||'').toLowerCase()} ${p.mes.toLowerCase()} ${(p.recibo||'').toLowerCase()}" data-estado="${p.estado}">
+              <td class="mono" style="font-size:0.78rem;color:var(--cyan)">${p.recibo || '—'}</td>
+              <td><strong style="color:var(--white);font-size:0.88rem">${p.cliente?.nombre || '—'}</strong></td>
+              <td style="font-size:0.85rem">${p.mes}</td>
+              <td>${p.metodo ? `<span class="badge badge--gray">${p.metodo}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+              <td><strong style="color:var(--white)">${formatCurrency(p.monto)}</strong></td>
+              <td style="color:var(--text-muted);font-size:0.83rem">${formatDate(p.fecha)}</td>
+              <td>${estadoBadge(p.estado)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  window._pagos = pagos;
+}
+
+function filterPagos() {
+  const q     = document.getElementById('searchPago').value.toLowerCase();
+  const estado = document.getElementById('estadoFilter').value;
+  document.querySelectorAll('#pagosTbody tr').forEach(tr => {
+    const mQ = !q || tr.dataset.search.includes(q);
+    const mE = !estado || tr.dataset.estado === estado;
+    tr.style.display = mQ && mE ? '' : 'none';
+  });
+}
+
+async function openRegModal() {
+  const clientes = await API.getAllClientes();
+  const sel = document.getElementById('rCliente');
+  sel.innerHTML = `<option value="">Seleccionar cliente...</option>` +
+    clientes.map(c => `<option value="${c.id}" data-nombre="${c.nombre}">${c.nombre}</option>`).join('');
+  document.getElementById('regForm').reset();
+  document.getElementById('contratoInfo').style.display = 'none';
+  document.getElementById('regModal').classList.add('open');
+}
+
+async function loadClienteContratos() {
+  const clienteId = parseInt(document.getElementById('rCliente').value);
+  if (!clienteId) return;
+  const contratos = await API.getContratosByCliente(clienteId);
+  const activo = contratos.find(c => c.estado === 'Activo');
+  if (activo) {
+    document.getElementById('rMonto').value = activo.montoMensual;
+    document.getElementById('contratoInfo').style.display = 'flex';
+    document.getElementById('contratoInfoText').textContent = `Contrato ${activo.nroContrato} · ${activo.plan?.nombre} · ${formatCurrency(activo.montoMensual)}/mes`;
+    window._activeContrato = activo;
+  } else {
+    document.getElementById('contratoInfo').style.display = 'none';
+    window._activeContrato = null;
+  }
+}
+
+async function submitPago(e) {
+  e.preventDefault();
+  const clienteId = parseInt(document.getElementById('rCliente').value);
+  const mes    = document.getElementById('rMes').value.trim();
+  const monto  = parseFloat(document.getElementById('rMonto').value);
+  const metodo = document.getElementById('rMetodo').value;
+  if (!clienteId || !mes || !monto || !metodo) { showToast('Completa todos los campos', 'error'); return; }
+  const contratoId = window._activeContrato?.id || 1;
+  const btn = document.getElementById('regBtn');
+  setLoading(btn, true);
+  try {
+    await API.registrarPago(contratoId, clienteId, mes, metodo, monto);
+    document.getElementById('regModal').classList.remove('open');
+    showToast('✓ Pago registrado correctamente');
+    loadPagos();
+  } catch(err) { showToast(err.message, 'error'); setLoading(btn, false); }
+}
+
+loadPagos();
+</script>
+</body>
+</html>

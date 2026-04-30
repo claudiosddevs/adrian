@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Contratos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">📋 Mis Contratos</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Cliente');
+const user = Auth.currentUser();
+renderSidebar('contratos');
+
+async function loadContratos() {
+  const contratos = await API.getContratosByCliente(user.clienteId);
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header">
+        <h2>Mis Contratos</h2>
+        <p>Detalle de los servicios contratados y su vigencia</p>
+      </div>
+      ${contratos.length === 0 ? `
+        <div class="empty-state"><div class="empty-state__icon">📋</div><h3>Sin contratos</h3><p>No tienes servicios contratados.</p><a href="../index.html#planes" class="btn btn--primary mt-2">Ver Planes Disponibles</a></div>
+      ` : contratos.map(c => {
+        const inicio = new Date(c.fechaInicio);
+        const fin    = new Date(c.fechaFin);
+        const hoy    = new Date();
+        const totalDias = Math.ceil((fin - inicio) / 86400000);
+        const diasPasados = Math.ceil((hoy - inicio) / 86400000);
+        const pct = Math.min(100, Math.max(0, Math.round(diasPasados / totalDias * 100)));
+        const diasRestantes = Math.max(0, Math.ceil((fin - hoy) / 86400000));
+
+        return `
+        <div class="card mb-2">
+          <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+            <div style="font-size:3rem">${iconoTipo(c.plan?.tipo)}</div>
+            <div style="flex:1;min-width:200px">
+              <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.5rem">
+                <h3 style="color:var(--white)">${c.plan?.nombre}</h3>
+                ${estadoBadge(c.estado)}
+                <span class="badge badge--cyan">${c.plan?.tipo}</span>
+              </div>
+              <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.3rem">N° Contrato: <span class="mono" style="color:var(--cyan)">${c.nroContrato}</span></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.8rem;margin-top:1rem">
+                <div><div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Velocidad</div><div style="font-size:1.5rem;font-weight:800;color:var(--cyan)">${c.plan?.velocidad}</div></div>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Mensualidad</div><div style="font-size:1.2rem;font-weight:700;color:var(--white)">${formatCurrency(c.montoMensual)}</div></div>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Inicio</div><div style="color:var(--white)">${formatDate(c.fechaInicio)}</div></div>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Vencimiento</div><div style="color:${diasRestantes < 30 ? 'var(--yellow)' : 'var(--white)'}">
+                  ${formatDate(c.fechaFin)}
+                  ${diasRestantes < 30 ? `<span class="badge badge--yellow" style="font-size:0.65rem;margin-left:0.3rem">${diasRestantes} días</span>` : ''}
+                </div></div>
+              </div>
+              <!-- Progress -->
+              <div style="margin-top:1.2rem">
+                <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-muted);margin-bottom:0.3rem">
+                  <span>Progreso del contrato</span>
+                  <span>${pct}% completado</span>
+                </div>
+                <div class="progress-bar"><div class="progress-bar__fill" style="width:${pct}%;background:${pct > 80 ? 'var(--yellow)' : 'var(--cyan)'}"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--navy-4);display:flex;gap:0.8rem;flex-wrap:wrap">
+            <a href="mis-pagos.html" class="btn btn--primary btn--sm">💳 Ver Pagos</a>
+            <a href="mis-reclamos.html" class="btn btn--secondary btn--sm">🎧 Soporte</a>
+          </div>
+        </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+loadContratos();
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reclamos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">🎧 Gestión de Reclamos</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- MANAGE RECLAMO MODAL -->
+<div class="modal-overlay" id="manageModal">
+  <div class="modal">
+    <div class="modal__header">
+      <div class="modal__title" id="manageTitle">Gestionar Reclamo</div>
+      <button class="modal__close" onclick="document.getElementById('manageModal').classList.remove('open')">✕</button>
+    </div>
+    <div id="manageContent"></div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador','Cajero','Tecnico');
+const user = Auth.currentUser();
+renderSidebar('reclamos');
+
+const ESTADOS = ['Recibido','En Proceso','Resuelto'];
+const TECNICOS = DB.usuarios.filter(u => u.rol === 'Tecnico');
+
+async function loadReclamos() {
+  const reclamos = await API.getAllReclamos();
+  const stats = {
+    total:     reclamos.length,
+    recibidos: reclamos.filter(r=>r.estado==='Recibido').length,
+    proceso:   reclamos.filter(r=>r.estado==='En Proceso').length,
+    resueltos: reclamos.filter(r=>r.estado==='Resuelto').length,
+  };
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header">
+        <h2>Reclamos y Soporte Técnico</h2>
+        <p>Gestión de solicitudes de soporte y reclamos de clientes</p>
+      </div>
+
+      <div class="grid-4 mb-3">
+        <div class="stat-card"><div class="stat-card__label">Total</div><div class="stat-card__value">${stats.total}</div><div class="stat-card__icon">🎧</div></div>
+        <div class="stat-card stat-card--yellow"><div class="stat-card__label">Recibidos</div><div class="stat-card__value">${stats.recibidos}</div><div class="stat-card__icon">📥</div></div>
+        <div class="stat-card stat-card--cyan"><div class="stat-card__label">En Proceso</div><div class="stat-card__value">${stats.proceso}</div><div class="stat-card__icon">🔧</div></div>
+        <div class="stat-card stat-card--green"><div class="stat-card__label">Resueltos</div><div class="stat-card__value">${stats.resueltos}</div><div class="stat-card__icon">✅</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-2 mb-2" style="flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <span class="search-bar__icon">🔍</span>
+          <input class="form-input" id="searchR" placeholder="Buscar por cliente o título..." oninput="filterR()" style="width:100%">
+        </div>
+        <select class="form-select" id="estadoR" onchange="filterR()" style="width:150px">
+          <option value="">Todos</option>
+          ${ESTADOS.map(e=>`<option value="${e}">${e}</option>`).join('')}
+        </select>
+        <select class="form-select" id="tipoR" onchange="filterR()" style="width:140px">
+          <option value="">Todos los tipos</option>
+          <option value="Leve">Leve</option>
+          <option value="Medio">Medio</option>
+          <option value="Complejo">Complejo</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>#</th><th>Cliente</th><th>Título</th><th>Tipo</th>
+            <th>Técnico</th><th>Estado</th><th>Fecha</th><th>Acciones</th>
+          </tr></thead>
+          <tbody id="reclamosTbody">
+            ${reclamos.map(r => {
+              const tec = TECNICOS.find(t => t.id === r.tecnicoId);
+              return `
+              <tr data-search="${r.cliente?.nombre?.toLowerCase()||''} ${r.titulo.toLowerCase()}" data-estado="${r.estado}" data-tipo="${r.tipo}">
+                <td class="mono" style="font-size:0.75rem;color:var(--text-muted)">#${String(r.id).padStart(4,'0')}</td>
+                <td style="font-size:0.85rem"><strong style="color:var(--white)">${r.cliente?.nombre}</strong></td>
+                <td style="font-size:0.85rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.titulo}">${r.titulo}</td>
+                <td>${tipoBadge(r.tipo)}</td>
+                <td style="font-size:0.82rem">${tec ? tec.nombre.split(' ')[0] : '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
+                <td>${estadoBadge(r.estado)}</td>
+                <td style="color:var(--text-muted);font-size:0.8rem">${formatDate(r.fecha)}</td>
+                <td><button class="btn btn--secondary btn--sm" onclick="openManage(${r.id})">Gestionar</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  window._reclamos = reclamos;
+}
+
+function filterR() {
+  const q    = document.getElementById('searchR').value.toLowerCase();
+  const est  = document.getElementById('estadoR').value;
+  const tipo = document.getElementById('tipoR').value;
+  document.querySelectorAll('#reclamosTbody tr').forEach(tr => {
+    const mQ = !q   || tr.dataset.search.includes(q);
+    const mE = !est || tr.dataset.estado === est;
+    const mT = !tipo|| tr.dataset.tipo   === tipo;
+    tr.style.display = mQ && mE && mT ? '' : 'none';
+  });
+}
+
+function openManage(id) {
+  const r   = window._reclamos.find(x => x.id === id);
+  const tec = TECNICOS.find(t => t.id === r.tecnicoId);
+  document.getElementById('manageTitle').textContent = `#${String(r.id).padStart(4,'0')} — ${r.titulo}`;
+  document.getElementById('manageContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:1.2rem">
+      <!-- Info -->
+      <div style="background:var(--navy-3);border-radius:var(--radius-sm);padding:1rem;font-size:0.85rem">
+        <div style="margin-bottom:0.5rem"><span style="color:var(--text-muted)">Cliente:</span> <strong style="color:var(--white)">${r.cliente?.nombre}</strong></div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--text-muted)">Tipo:</span> ${tipoBadge(r.tipo)}</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--text-muted)">Estado:</span> ${estadoBadge(r.estado)}</div>
+        <div style="margin-bottom:0.5rem"><span style="color:var(--text-muted)">Fecha:</span> ${formatDate(r.fecha)}</div>
+        <div><span style="color:var(--text-muted)">Descripción:</span><br><span style="color:var(--white)">${r.descripcion}</span></div>
+        ${r.observacion ? `<div style="margin-top:0.5rem"><span style="color:var(--text-muted)">Observación:</span><br><span style="color:var(--white)">${r.observacion}</span></div>` : ''}
+        ${r.calificacion ? `<div style="margin-top:0.5rem"><span style="color:var(--text-muted)">Calificación cliente:</span> ${'⭐'.repeat(r.calificacion)}</div>` : ''}
+      </div>
+
+      <!-- Assign technician -->
+      ${r.estado !== 'Resuelto' ? `
+      <div class="form-group">
+        <label class="form-label">Asignar Técnico</label>
+        <div style="display:flex;gap:0.5rem">
+          <select class="form-select" id="tecSelect" style="flex:1">
+            <option value="">Sin asignar</option>
+            ${TECNICOS.map(t => `<option value="${t.id}" ${t.id===r.tecnicoId?'selected':''}>${t.nombre}</option>`).join('')}
+          </select>
+          <button class="btn btn--secondary" onclick="asignarTecnico(${r.id})">Asignar</button>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">⚠ Máximo 5 reclamos activos por técnico</p>
+      </div>
+
+      <!-- Change status -->
+      <div class="form-group">
+        <label class="form-label">Cambiar Estado</label>
+        <select class="form-select" id="estadoSelect">
+          ${ESTADOS.map(e => `<option value="${e}" ${e===r.estado?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observación / Resolución</label>
+        <textarea class="form-textarea" id="obsInput" placeholder="Describe qué se hizo para resolver el problema...">${r.observacion||''}</textarea>
+      </div>
+      <button class="btn btn--primary btn--full" id="updateBtn" onclick="updateEstado(${r.id})">Actualizar Estado</button>
+      ` : `<div class="alert alert--success"><span>✅</span> Este reclamo ya fue resuelto.</div>`}
+    </div>
+  `;
+  document.getElementById('manageModal').classList.add('open');
+}
+
+async function asignarTecnico(reclamoId) {
+  const tecId = parseInt(document.getElementById('tecSelect').value);
+  if (!tecId) { showToast('Selecciona un técnico', 'error'); return; }
+  try {
+    await API.asignarTecnico(reclamoId, tecId);
+    showToast('Técnico asignado correctamente');
+    document.getElementById('manageModal').classList.remove('open');
+    loadReclamos();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function updateEstado(reclamoId) {
+  const estado = document.getElementById('estadoSelect').value;
+  const obs    = document.getElementById('obsInput').value.trim();
+  const btn    = document.getElementById('updateBtn');
+  setLoading(btn, true);
+  try {
+    await API.updateReclamoEstado(reclamoId, estado, obs);
+    showToast('Estado actualizado: ' + estado);
+    document.getElementById('manageModal').classList.remove('open');
+    loadReclamos();
+  } catch(e) { showToast(e.message, 'error'); setLoading(btn, false); }
+}
+
+loadReclamos();
+</script>
+</body>
+</html>

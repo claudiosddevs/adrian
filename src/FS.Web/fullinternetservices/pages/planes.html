@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planes — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .plan-type-filter { display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem; }
+    .filter-btn {
+      padding:0.4rem 1rem; border-radius:999px; font-size:0.82rem; font-weight:600;
+      background:var(--navy-3); border:1px solid var(--navy-4); color:var(--text-muted);
+      cursor:pointer; transition:all var(--transition);
+    }
+    .filter-btn:hover { color:var(--white); border-color:var(--navy-4); }
+    .filter-btn.active { background:var(--cyan-glow); border-color:var(--cyan); color:var(--cyan); }
+    .compare-bar {
+      position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+      background:var(--navy-2); border:1px solid var(--cyan);
+      border-radius:999px; padding:0.6rem 1.4rem;
+      display:flex; align-items:center; gap:1rem;
+      box-shadow:0 0 30px rgba(0,212,255,0.15);
+      z-index:50; font-size:0.88rem;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">📡 Planes de Servicio</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireAuth();
+const user = Auth.currentUser();
+const roleMap = { Cliente:'home', Administrador:'planes', Cajero:'planes', Tecnico:'planes' };
+renderSidebar('planes');
+
+async function loadPlanes() {
+  const planes = await API.getAllPlanes();
+  const tipos  = [...new Set(planes.map(p => p.tipo))];
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header">
+        <h2>Planes Disponibles</h2>
+        <p>Todos los servicios y planes activos de Full Internet Services</p>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="plan-type-filter" id="filterBtns">
+        <button class="filter-btn active" data-tipo="all" onclick="filterPlanes('all')">📦 Todos</button>
+        ${tipos.map(t => `<button class="filter-btn" data-tipo="${t}" onclick="filterPlanes('${t}')">${iconoTipo(t)} ${t}</button>`).join('')}
+      </div>
+
+      <!-- Plans grid -->
+      <div class="grid-3" id="planesGrid">
+        ${planes.map((p, i) => renderPlanCard(p, i)).join('')}
+      </div>
+    </div>
+  `;
+
+  window._planes = planes;
+}
+
+function renderPlanCard(p, i) {
+  const featured = i === 2 || p.nombre.includes('Pro') || p.nombre.includes('50');
+  return `
+  <div class="plan-card ${featured ? 'plan-card--featured':''}" data-tipo="${p.tipo}">
+    ${featured ? `<div style="font-size:0.7rem;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem">⭐ Más Popular</div>` : ''}
+    <div class="plan-card__icon">${iconoTipo(p.tipo)}</div>
+    <div class="plan-card__name">${p.nombre}</div>
+    ${p.velocidad !== '—' ? `<div class="plan-card__speed">${p.velocidad}</div>` : ''}
+    <div class="plan-card__price">
+      ${formatCurrency(p.precio)} <span>/ mes</span>
+    </div>
+    <p class="plan-card__desc">${p.descripcion}</p>
+    <div class="plan-card__tag">
+      <span class="badge ${p.tipo==='Fibra'?'badge--cyan':p.tipo==='Internet'?'badge--blue':'badge--gray'}">${p.tipo}</span>
+    </div>
+    ${user.rol === 'Cliente' ? `
+    <div style="display:flex;gap:0.5rem;margin-top:0.8rem">
+      <a href="mis-contratos.html" class="btn btn--primary btn--sm" style="flex:1;justify-content:center">Contratar</a>
+      <a href="mis-reclamos.html" class="btn btn--ghost btn--sm">Info</a>
+    </div>` : `
+    <div style="margin-top:0.8rem">
+      <span class="badge badge--gray">ID: ${p.id}</span>
+      ${p.activo ? '<span class="badge badge--green" style="margin-left:0.3rem">Activo</span>' : '<span class="badge badge--red" style="margin-left:0.3rem">Inactivo</span>'}
+    </div>`}
+  </div>
+  `;
+}
+
+function filterPlanes(tipo) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
+  const cards = document.querySelectorAll('[data-tipo]');
+  cards.forEach(c => {
+    if (!c.classList.contains('filter-btn')) {
+      c.style.display = (tipo === 'all' || c.dataset.tipo === tipo) ? '' : 'none';
+    }
+  });
+}
+
+loadPlanes();
+</script>
+</body>
+</html>

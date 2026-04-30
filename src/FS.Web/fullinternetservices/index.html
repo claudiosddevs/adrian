@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Internet Services — Bolivia</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* ─── LANDING-SPECIFIC STYLES ─── */
+    body { overflow-x: hidden; }
+
+    /* Navbar */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,15,30,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav__logo { display: flex; align-items: center; gap: 0.7rem; }
+    .nav__logo-icon { width: 34px; height: 34px; background: var(--cyan); border-radius: 8px; display:flex;align-items:center;justify-content:center; font-weight:800; color:var(--navy); font-size:1rem; }
+    .nav__logo-text { font-weight: 800; font-size: 1rem; color: var(--white); }
+    .nav__links { display: flex; gap: 2rem; align-items: center; }
+    .nav__link { color: var(--text-muted); font-size: 0.88rem; font-weight: 500; transition: color var(--transition); }
+    .nav__link:hover { color: var(--white); }
+    .nav__actions { display: flex; gap: 0.8rem; align-items: center; }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 100px 0 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero__bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 70% 50%, rgba(0,212,255,0.07) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 60% at 10% 80%, rgba(59,130,246,0.05) 0%, transparent 60%);
+    }
+    .hero__grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 40%, transparent 100%);
+    }
+    .hero__content { position: relative; z-index: 1; max-width: 680px; }
+    .hero__badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--cyan-glow); border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 999px; padding: 0.35rem 0.9rem;
+      font-size: 0.78rem; font-weight: 600; color: var(--cyan);
+      margin-bottom: 1.5rem;
+    }
+    .hero__badge::before { content: '●'; font-size: 0.5rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .hero h1 { color: var(--white); margin-bottom: 1rem; }
+    .hero h1 span { color: var(--cyan); }
+    .hero__desc { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 2rem; max-width: 520px; }
+    .hero__actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hero__visual {
+      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      width: 45%; display: flex; align-items: center; justify-content: center;
+    }
+    .hero__modem {
+      width: 280px; height: 280px;
+      background: var(--navy-2);
+      border: 1px solid var(--navy-4);
+      border-radius: 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem;
+      position: relative;
+      box-shadow: 0 0 60px rgba(0,212,255,0.1);
+    }
+    .hero__modem-icon { font-size: 4rem; }
+    .hero__modem-speed { font-size: 2.5rem; font-weight: 800; color: var(--cyan); }
+    .hero__modem-label { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+    .hero__modem-dots { display: flex; gap: 0.5rem; }
+    .hero__modem-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--navy-4); }
+    .hero__modem-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s ease-in-out infinite; }
+    .hero__modem-dot:nth-child(2).on { animation-delay: 0.3s; }
+    .hero__modem-dot:nth-child(3).on { animation-delay: 0.6s; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Services Section */
+    .section-landing { padding: 5rem 0; }
+    .section-tag {
+      display: inline-block;
+      background: var(--cyan-glow); color: var(--cyan);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 999px; padding: 0.3rem 0.9rem;
+      font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem;
+    }
+    .section-title-main { color: var(--white); margin-bottom: 0.5rem; }
+
+    /* Feature cards */
+    .feat-card {
+      background: var(--navy-2);
+      border: 1px solid var(--navy-4);
+      border-radius: var(--radius);
+      padding: 1.8rem;
+      transition: all var(--transition);
+    }
+    .feat-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-4px); }
+    .feat-card__icon { font-size: 2rem; margin-bottom: 1rem; }
+    .feat-card h3 { color: var(--white); margin-bottom: 0.4rem; }
+
+    /* Plans pricing */
+    .plans-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .pricing-card {
+      background: var(--navy-2);
+      border: 1px solid var(--navy-4);
+      border-radius: var(--radius);
+      padding: 1.8rem 1.5rem;
+      text-align: center;
+      transition: all var(--transition);
+      position: relative;
+    }
+    .pricing-card:hover { border-color: var(--cyan); }
+    .pricing-card--featured {
+      border-color: var(--cyan);
+      background: linear-gradient(135deg, rgba(0,212,255,0.05), var(--navy-2));
+    }
+    .pricing-card__popular {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--cyan); color: var(--navy);
+      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.8rem;
+      border-radius: 999px; white-space: nowrap;
+    }
+    .pricing-card__icon { font-size: 1.8rem; margin-bottom: 0.8rem; }
+    .pricing-card__name { font-size: 0.9rem; font-weight: 700; color: var(--white); margin-bottom: 0.5rem; }
+    .pricing-card__speed { font-size: 2rem; font-weight: 800; color: var(--cyan); line-height: 1; margin-bottom: 0.3rem; }
+    .pricing-card__price { font-size: 1.3rem; font-weight: 700; color: var(--white); }
+    .pricing-card__price span { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; }
+    .pricing-card__desc { font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0 1.2rem; }
+
+    /* CTA */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(59,130,246,0.05));
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 20px;
+      padding: 4rem 3rem;
+      text-align: center;
+      margin: 2rem 0;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--navy-2);
+      border-top: 1px solid var(--navy-4);
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 1000px) {
+      .hero__visual { display: none; }
+      .plans-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav__links { display: none; }
+    }
+    @media (max-width: 600px) {
+      .plans-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 80px; }
+      .cta-section { padding: 2rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="nav">
+  <div class="nav__logo">
+    <div class="nav__logo-icon">FI</div>
+    <span class="nav__logo-text">Full Internet Services</span>
+  </div>
+  <div class="nav__links">
+    <a href="#planes" class="nav__link">Planes</a>
+    <a href="#servicios" class="nav__link">Servicios</a>
+    <a href="#contacto" class="nav__link">Contacto</a>
+  </div>
+  <div class="nav__actions">
+    <a href="login.html" class="btn btn--ghost btn--sm">Iniciar Sesión</a>
+    <a href="login.html" class="btn btn--primary btn--sm">Mi Cuenta</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero__bg"></div>
+  <div class="hero__grid"></div>
+  <div class="container" style="width:100%">
+    <div class="hero__content fade-in">
+      <div class="hero__badge">🌐 Cobertura en toda Bolivia</div>
+      <h1>Internet de alta velocidad<br>para tu <span>hogar y empresa</span></h1>
+      <p class="hero__desc">Planes de fibra óptica, soporte técnico 24/7 y la mejor conectividad de La Paz. Conéctate con Full Internet Services.</p>
+      <div class="hero__actions">
+        <a href="#planes" class="btn btn--primary btn--lg">Ver Planes</a>
+        <a href="login.html" class="btn btn--secondary btn--lg">🔐 Acceder a mi cuenta</a>
+      </div>
+    </div>
+    <div class="hero__visual">
+      <div class="hero__modem">
+        <div class="hero__modem-icon">📡</div>
+        <div class="hero__modem-speed">500<span style="font-size:1rem;color:var(--text-muted)"> Mbps</span></div>
+        <div class="hero__modem-label">Fibra Óptica Activa</div>
+        <div class="hero__modem-dots">
+          <div class="hero__modem-dot on"></div>
+          <div class="hero__modem-dot on"></div>
+          <div class="hero__modem-dot on"></div>
+          <div class="hero__modem-dot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section-landing" id="servicios">
+  <div class="container">
+    <div class="text-center mb-3">
+      <div class="section-tag">¿Por qué elegirnos?</div>
+      <h2 class="section-title-main">Todo lo que necesitas, en un solo lugar</h2>
+      <p>Tecnología de punta, atención personalizada y planes para cada necesidad.</p>
+    </div>
+    <div class="grid-3">
+      <div class="feat-card">
+        <div class="feat-card__icon">⚡</div>
+        <h3>Fibra Óptica</h3>
+        <p>Conexión simétrica de alta velocidad con la tecnología más avanzada disponible en Bolivia.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-card__icon">🛡️</div>
+        <h3>Sin cortes garantizados</h3>
+        <p>Red redundante con monitoreo 24/7 para asegurar el 99.9% de disponibilidad de su servicio.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-card__icon">🎧</div>
+        <h3>Soporte Técnico</h3>
+        <p>Equipo de técnicos certificados disponibles para resolver cualquier problema en el menor tiempo posible.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-card__icon">📱</div>
+        <h3>Portal de Cliente</h3>
+        <p>Gestiona tus pagos, contratos y reclamos desde cualquier dispositivo, en cualquier momento.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-card__icon">💳</div>
+        <h3>Pagos Fáciles</h3>
+        <p>Paga en línea con QR, transferencia, efectivo o tarjeta. Recibe tu recibo de inmediato.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-card__icon">📊</div>
+        <h3>Control Total</h3>
+        <p>Visualiza el estado de tu servicio, historial de pagos y tus reclamos en tiempo real.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section class="section-landing" id="planes" style="background: rgba(15,23,42,0.5); border-top:1px solid var(--navy-4); border-bottom:1px solid var(--navy-4)">
+  <div class="container">
+    <div class="text-center mb-3">
+      <div class="section-tag">Planes disponibles</div>
+      <h2 class="section-title-main">Elige el plan ideal para ti</h2>
+      <p>Sin contratos forzosos. Cambia de plan cuando quieras.</p>
+    </div>
+    <div class="plans-grid" id="landingPlans">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+    <p class="text-center mt-3" style="font-size:0.82rem;">* Precios en Bolivianos (Bs.) con IVA incluido. Promociones sujetas a disponibilidad en tu zona.</p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section-landing" id="contacto">
+  <div class="container">
+    <div class="cta-section">
+      <div style="font-size:3rem;margin-bottom:1rem">🚀</div>
+      <h2 style="color:var(--white);margin-bottom:0.5rem">¿Ya eres cliente?</h2>
+      <p style="margin-bottom:2rem;font-size:1rem">Accede a tu portal para gestionar pagos, contratos y solicitar soporte técnico.</p>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <a href="login.html" class="btn btn--primary btn--lg">🔐 Ingresar a mi cuenta</a>
+        <a href="tel:+59122334455" class="btn btn--secondary btn--lg">📞 Llamar: 2 233-4455</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin-bottom:0.8rem">
+      <div class="nav__logo-icon" style="width:28px;height:28px;font-size:0.8rem">FI</div>
+      <strong style="color:var(--white)">Full Internet Services</strong>
+    </div>
+    <p>La Paz, Bolivia · info@fullinternetservices.bo · +591 2 233-4455</p>
+    <p style="margin-top:0.5rem;font-size:0.75rem;opacity:0.5">© 2025 Full Internet Services. Todos los derechos reservados. · Sistema desarrollado por Adrian Gareca, Paul Carrizales, Denis Nogales — UPSCZ Ing. Software 2026</p>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script>
+  // Load plans into the landing page
+  API.getAllPlanes().then(planes => {
+    const main = planes.filter(p => p.tipo === 'Internet' || p.tipo === 'Fibra').slice(0, 4);
+    document.getElementById('landingPlans').innerHTML = main.map((p, i) => `
+      <div class="pricing-card ${i === 1 ? 'pricing-card--featured' : ''}">
+        ${i === 1 ? '<div class="pricing-card__popular">⭐ Más popular</div>' : ''}
+        <div class="pricing-card__icon">${iconoTipo(p.tipo)}</div>
+        <div class="pricing-card__name">${p.nombre}</div>
+        <div class="pricing-card__speed">${p.velocidad}</div>
+        <div class="pricing-card__price">Bs. ${p.precio.toFixed(2)} <span>/mes</span></div>
+        <p class="pricing-card__desc">${p.descripcion}</p>
+        <a href="login.html" class="btn btn--primary btn--full btn--sm">Contratar</a>
+      </div>
+    `).join('');
+  });
+
+  // Smooth scroll
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>

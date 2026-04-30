@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .report-section { background:var(--navy-2);border:1px solid var(--navy-4);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem; }
+    .report-section h3 { color:var(--white);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem; }
+    .bar-chart { display:flex;flex-direction:column;gap:0.7rem; }
+    .bar-row { display:flex;align-items:center;gap:0.8rem;font-size:0.83rem; }
+    .bar-label { width:140px;color:var(--text-muted);text-align:right;flex-shrink:0; }
+    .bar-track { flex:1;height:10px;background:var(--navy-4);border-radius:999px;overflow:hidden; }
+    .bar-fill  { height:100%;border-radius:999px;transition:width 0.6s ease; }
+    .bar-value { width:60px;color:var(--white);font-weight:600;font-size:0.82rem; }
+    .kpi-row { display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;margin-bottom:1.2rem; }
+    .kpi-box { background:var(--navy-3);border-radius:var(--radius-sm);padding:1rem;text-align:center; }
+    .kpi-box__val { font-size:1.6rem;font-weight:800;color:var(--white); }
+    .kpi-box__label { font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">📈 Reportes</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador');
+renderSidebar('reportes');
+
+async function loadReportes() {
+  const [mora, reclamos, pagos, clientes, contratos] = await Promise.all([
+    API.getMora(),
+    API.getAllReclamos(),
+    API.getAllPagos(),
+    API.getAllClientes(),
+    API.getAllContratos(),
+  ]);
+
+  const tecnicos = DB.usuarios.filter(u => u.rol === 'Tecnico');
+  const totalIngresos = pagos.filter(p=>p.estado==='Pagado').reduce((s,p)=>s+p.monto,0);
+  const totalMora     = pagos.filter(p=>p.estado==='Mora').reduce((s,p)=>s+p.monto,0);
+  const recResueltos  = reclamos.filter(r=>r.estado==='Resuelto');
+  const pctResolucion = reclamos.length ? Math.round(recResueltos.length/reclamos.length*100) : 0;
+
+  // Technician stats
+  const tecStats = tecnicos.map(t => {
+    const asignados = reclamos.filter(r => r.tecnicoId === t.id);
+    const resueltos = asignados.filter(r => r.estado === 'Resuelto');
+    const calificaciones = resueltos.filter(r => r.calificacion).map(r => r.calificacion);
+    const avgCal = calificaciones.length ? (calificaciones.reduce((s,c)=>s+c,0)/calificaciones.length).toFixed(1) : '—';
+    const pct = asignados.length ? Math.round(resueltos.length/asignados.length*100) : 0;
+    return { ...t, asignados:asignados.length, resueltos:resueltos.length, pct, avgCal };
+  });
+
+  // Plan distribution
+  const planDist = {};
+  contratos.forEach(c => {
+    const planName = DB.planes.find(p=>p.id===c.planId)?.nombre || 'Desconocido';
+    planDist[planName] = (planDist[planName] || 0) + 1;
+  });
+  const maxPlan = Math.max(...Object.values(planDist));
+
+  // Payment methods
+  const metodoDist = {};
+  pagos.filter(p=>p.metodo).forEach(p => { metodoDist[p.metodo] = (metodoDist[p.metodo]||0)+1; });
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Reportes del Sistema</h2><p>Análisis y estadísticas de Full Internet Services</p></div>
+        <div style="font-size:0.82rem;color:var(--text-muted)">📅 ${new Date().toLocaleDateString('es-BO',{year:'numeric',month:'long',day:'numeric'})}</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('mora',this)">⚠ Mora</button>
+        <button class="tab-btn" onclick="switchTab('ventas',this)">💰 Ventas</button>
+        <button class="tab-btn" onclick="switchTab('tecnicos',this)">🔧 Técnicos</button>
+        <button class="tab-btn" onclick="switchTab('planes',this)">📡 Planes</button>
+      </div>
+
+      <!-- MORA TAB -->
+      <div class="tab-panel active" id="tab-mora">
+        <div class="kpi-row">
+          <div class="kpi-box"><div class="kpi-box__val" style="color:var(--red)">${mora.length}</div><div class="kpi-box__label">Clientes en Mora</div></div>
+          <div class="kpi-box"><div class="kpi-box__val" style="color:var(--yellow)">${formatCurrency(totalMora)}</div><div class="kpi-box__label">Monto en Mora</div></div>
+          <div class="kpi-box"><div class="kpi-box__val">${clientes.length}</div><div class="kpi-box__label">Total Clientes</div></div>
+        </div>
+        ${mora.length > 0 ? `
+        <div class="report-section">
+          <h3>⚠️ Clientes en Situación de Mora</h3>
+          <div class="alert alert--warning mb-2"><span>📌</span> La mora se aplica automáticamente a partir del día 12 de cada mes sin pago registrado.</div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Cliente</th><th>Período</th><th>Días</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${mora.map(m => {
+                  const dias = m.fecha ? Math.ceil((new Date()-new Date(m.fecha))/86400000) : 30;
+                  return `<tr>
+                    <td><strong style="color:var(--white)">${m.cliente?.nombre}</strong></td>
+                    <td>${m.mes}</td>
+                    <td><span class="badge badge--red">${dias}+ días</span></td>
+                    <td><strong style="color:var(--red)">${formatCurrency(m.monto)}</strong></td>
+                    <td>${estadoBadge(m.estado)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : `<div class="alert alert--success"><span>✓</span> No hay clientes en mora actualmente.</div>`}
+      </div>
+
+      <!-- VENTAS TAB -->
+      <div class="tab-panel" id="tab-ventas">
+        <div class="kpi-row">
+          <div class="kpi-box"><div class="kpi-box__val" style="color:var(--green)">${formatCurrency(totalIngresos)}</div><div class="kpi-box__label">Ingresos Totales</div></div>
+          <div class="kpi-box"><div class="kpi-box__val">${contratos.filter(c=>c.estado==='Activo').length}</div><div class="kpi-box__label">Contratos Activos</div></div>
+          <div class="kpi-box"><div class="kpi-box__val">${pagos.filter(p=>p.estado==='Pagado').length}</div><div class="kpi-box__label">Pagos Exitosos</div></div>
+        </div>
+        <div class="report-section">
+          <h3>💳 Métodos de Pago Utilizados</h3>
+          <div class="bar-chart">
+            ${Object.entries(metodoDist).map(([m,c]) => `
+            <div class="bar-row">
+              <div class="bar-label">${m}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/Math.max(...Object.values(metodoDist))*100)}%;background:var(--cyan)"></div></div>
+              <div class="bar-value">${c} pagos</div>
+            </div>`).join('')}
+          </div>
+        </div>
+        <div class="report-section">
+          <h3>📋 Todos los Pagos Registrados</h3>
+          <div class="table-wrap" style="max-height:300px;overflow-y:auto">
+            <table class="table">
+              <thead><tr><th>Recibo</th><th>Cliente</th><th>Período</th><th>Método</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${pagos.map(p=>`<tr>
+                  <td class="mono" style="font-size:0.78rem;color:var(--cyan)">${p.recibo||'—'}</td>
+                  <td style="font-size:0.85rem">${p.cliente?.nombre}</td>
+                  <td>${p.mes}</td>
+                  <td>${p.metodo?`<span class="badge badge--gray">${p.metodo}</span>`:'—'}</td>
+                  <td><strong style="color:var(--white)">${formatCurrency(p.monto)}</strong></td>
+                  <td>${estadoBadge(p.estado)}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TÉCNICOS TAB -->
+      <div class="tab-panel" id="tab-tecnicos">
+        <div class="kpi-row">
+          <div class="kpi-box"><div class="kpi-box__val">${tecnicos.length}</div><div class="kpi-box__label">Técnicos Activos</div></div>
+          <div class="kpi-box"><div class="kpi-box__val" style="color:var(--cyan)">${pctResolucion}%</div><div class="kpi-box__label">Tasa de Resolución</div></div>
+          <div class="kpi-box"><div class="kpi-box__val">${recResueltos.length}</div><div class="kpi-box__label">Reclamos Resueltos</div></div>
+        </div>
+        <div class="report-section">
+          <h3>🔧 Desempeño por Técnico</h3>
+          ${tecStats.map(t => `
+          <div style="background:var(--navy-3);border-radius:var(--radius-sm);padding:1.1rem;margin-bottom:0.8rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+              <div>
+                <div style="font-weight:700;color:var(--white)">${t.nombre}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted)">${t.asignados} reclamos asignados · ${t.resueltos} resueltos</div>
+              </div>
+              <div style="display:flex;gap:0.8rem;align-items:center">
+                <span class="badge ${t.pct>=80?'badge--green':t.pct>=50?'badge--yellow':'badge--red'}">${t.pct}% resolución</span>
+                ${t.avgCal !== '—' ? `<span class="badge badge--yellow">⭐ ${t.avgCal}</span>` : ''}
+              </div>
+            </div>
+            <div class="progress-bar mt-2">
+              <div class="progress-bar__fill" style="width:${t.pct}%;background:${t.pct>=80?'var(--green)':t.pct>=50?'var(--yellow)':'var(--red)'}"></div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- PLANES TAB -->
+      <div class="tab-panel" id="tab-planes">
+        <div class="kpi-row">
+          <div class="kpi-box"><div class="kpi-box__val">${DB.planes.length}</div><div class="kpi-box__label">Planes Activos</div></div>
+          <div class="kpi-box"><div class="kpi-box__val">${contratos.length}</div><div class="kpi-box__label">Contratos Totales</div></div>
+          <div class="kpi-box"><div class="kpi-box__val" style="color:var(--cyan)">${contratos.filter(c=>c.estado==='Activo').length}</div><div class="kpi-box__label">Contratos Vigentes</div></div>
+        </div>
+        <div class="report-section">
+          <h3>📡 Distribución de Planes Contratados</h3>
+          <div class="bar-chart">
+            ${Object.entries(planDist).map(([n,c]) => `
+            <div class="bar-row">
+              <div class="bar-label" style="font-size:0.78rem">${n}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxPlan*100)}%;background:var(--cyan)"></div></div>
+              <div class="bar-value">${c}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+loadReportes();
+</script>
+</body>
+</html>

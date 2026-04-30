@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Panel — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div>
+        <div class="topbar__title" id="topbarGreeting">Cargando...</div>
+        <div class="topbar__meta" id="topbarDate"></div>
+      </div>
+      <div id="topbarMora"></div>
+    </header>
+
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div><p>Cargando tu panel...</p></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Cliente');
+const user = Auth.currentUser();
+
+// Date display
+const now = new Date();
+document.getElementById('topbarDate').textContent = now.toLocaleDateString('es-BO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+document.getElementById('topbarGreeting').textContent = `Hola, ${user.nombre.split(' ')[0]} 👋`;
+
+renderSidebar('home');
+
+async function loadDashboard() {
+  const cliente = await API.getClienteById(user.clienteId);
+  const contratos = await API.getContratosByCliente(user.clienteId);
+  const pagos = await API.getPagosByCliente(user.clienteId);
+  const reclamos = await API.getReclamosByCliente(user.clienteId);
+  const enMora = pagos.some(p => p.estado === 'Mora');
+  const pendientes = pagos.filter(p => p.estado === 'Pendiente' || p.estado === 'Mora');
+  const contratoActivo = contratos.find(c => c.estado === 'Activo');
+
+  // Mora badge on topbar
+  if (enMora) {
+    document.getElementById('topbarMora').innerHTML = `<span class="badge badge--red">⚠ EN MORA</span>`;
+  }
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <!-- MORA ALERT -->
+      ${enMora ? `
+      <div class="mora-banner">
+        <div class="mora-banner__icon">⚠️</div>
+        <div>
+          <div class="mora-banner__title">Tienes pagos en mora</div>
+          <div class="mora-banner__desc">Tu servicio puede ser suspendido. Por favor, regulariza tu situación cuanto antes.</div>
+        </div>
+        <a href="mis-pagos.html" class="btn btn--danger btn--sm" style="margin-left:auto">Pagar Ahora</a>
+      </div>` : ''}
+
+      <!-- STAT CARDS -->
+      <div class="grid-4 mb-3">
+        <div class="stat-card stat-card--cyan">
+          <div class="stat-card__label">Plan Activo</div>
+          <div class="stat-card__value">${contratoActivo ? contratoActivo.plan?.velocidad || '—' : '—'}</div>
+          <div class="stat-card__icon">📡</div>
+        </div>
+        <div class="stat-card ${enMora ? 'stat-card--red':'stat-card--green'}">
+          <div class="stat-card__label">Estado de Cuenta</div>
+          <div class="stat-card__value" style="font-size:1.1rem">${enMora ? '⚠ Mora' : '✓ Al día'}</div>
+          <div class="stat-card__icon">${enMora ? '🔴':'🟢'}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Pagos Realizados</div>
+          <div class="stat-card__value">${pagos.filter(p=>p.estado==='Pagado').length}</div>
+          <div class="stat-card__icon">💳</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Reclamos</div>
+          <div class="stat-card__value">${reclamos.length}</div>
+          <div class="stat-card__icon">🎧</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- MY SERVICE -->
+        <div>
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Mi Servicio Activo</span>
+              <a href="mis-contratos.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            ${contratoActivo ? `
+            <div class="card card--glow">
+              <div class="flex items-center gap-2 mb-2">
+                <span style="font-size:2rem">${iconoTipo(contratoActivo.plan?.tipo)}</span>
+                <div>
+                  <div style="font-weight:700;color:var(--white)">${contratoActivo.plan?.nombre}</div>
+                  <div class="flex gap-1 items-center mt-1">
+                    ${estadoBadge(contratoActivo.estado)}
+                    <span class="badge badge--cyan">${contratoActivo.plan?.tipo}</span>
+                  </div>
+                </div>
+                <div style="margin-left:auto;text-align:right">
+                  <div style="font-size:1.8rem;font-weight:800;color:var(--cyan)">${contratoActivo.plan?.velocidad}</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-top:1rem;font-size:0.85rem">
+                <div><span style="color:var(--text-muted)">Contrato:</span><br><span class="mono" style="color:var(--white)">${contratoActivo.nroContrato}</span></div>
+                <div><span style="color:var(--text-muted)">Mensualidad:</span><br><span style="color:var(--white);font-weight:700">${formatCurrency(contratoActivo.montoMensual)}</span></div>
+                <div><span style="color:var(--text-muted)">Inicio:</span><br><span style="color:var(--white)">${formatDate(contratoActivo.fechaInicio)}</span></div>
+                <div><span style="color:var(--text-muted)">Vence:</span><br><span style="color:var(--white)">${formatDate(contratoActivo.fechaFin)}</span></div>
+              </div>
+            </div>
+            ` : `<div class="empty-state"><div class="empty-state__icon">📋</div><h3>Sin contratos activos</h3><p>No tienes servicios contratados actualmente.</p></div>`}
+          </div>
+
+          <!-- PENDING PAYMENTS -->
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Pagos Pendientes</span>
+              <a href="mis-pagos.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            ${pendientes.length > 0 ? pendientes.map(p => `
+            <div class="card card--flat flex items-center gap-2 mb-1" style="padding:1rem">
+              <div style="flex:1">
+                <div style="font-weight:600;color:var(--white);font-size:0.9rem">${p.mes}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted)">Monto: ${formatCurrency(p.monto)}</div>
+              </div>
+              ${estadoBadge(p.estado)}
+              <a href="mis-pagos.html" class="btn btn--primary btn--sm">Pagar</a>
+            </div>
+            `).join('') : `<div class="alert alert--success"><span>✓</span> ¡Estás al día con todos tus pagos!</div>`}
+          </div>
+        </div>
+
+        <!-- RECENT RECLAMOS -->
+        <div>
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Mis Últimos Reclamos</span>
+              <a href="mis-reclamos.html" class="btn btn--ghost btn--sm">Ver todo</a>
+            </div>
+            ${reclamos.length > 0 ? reclamos.slice(0,3).map(r => `
+            <div class="card card--flat mb-1" style="padding:1rem">
+              <div class="flex items-center gap-2">
+                <div style="flex:1">
+                  <div style="font-weight:600;color:var(--white);font-size:0.88rem">${r.titulo}</div>
+                  <div style="font-size:0.78rem;color:var(--text-muted)">${formatDate(r.fecha)} · ${tipoBadge(r.tipo)}</div>
+                </div>
+                ${estadoBadge(r.estado)}
+              </div>
+              ${r.estado==='Resuelto' && !r.calificacion ? `
+              <div class="flex gap-1 items-center mt-2" style="font-size:0.8rem;color:var(--text-muted)">
+                <span>¿Cómo fue el servicio?</span>
+                ${[1,2,3,4,5].map(n=>`<span class="star" onclick="calificarReclamo(${r.id},${n})" style="font-size:1.1rem;cursor:pointer">☆</span>`).join('')}
+              </div>` : r.calificacion ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem">Tu calificación: ${'⭐'.repeat(r.calificacion)}</div>` : ''}
+            </div>
+            `).join('') : `
+            <div class="empty-state" style="padding:2rem">
+              <div class="empty-state__icon">🎧</div>
+              <h3>Sin reclamos</h3>
+              <p>No has creado solicitudes de soporte.</p>
+              <a href="mis-reclamos.html" class="btn btn--primary btn--sm mt-2">Crear Reclamo</a>
+            </div>`}
+          </div>
+
+          <!-- QUICK ACTIONS -->
+          <div class="section">
+            <div class="section-title mb-2">Acciones Rápidas</div>
+            <div class="grid-2" style="gap:0.8rem">
+              <a href="mis-pagos.html" class="btn btn--primary btn--full">💳 Realizar Pago</a>
+              <a href="mis-reclamos.html" class="btn btn--secondary btn--full">🎧 Nuevo Reclamo</a>
+              <a href="mis-contratos.html" class="btn btn--ghost btn--full">📋 Mis Contratos</a>
+              <a href="planes.html" class="btn btn--ghost btn--full">📡 Ver Planes</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function calificarReclamo(id, cal) {
+  try {
+    await API.calificarReclamo(id, cal);
+    showToast('¡Gracias por tu calificación! ' + '⭐'.repeat(cal));
+    loadDashboard();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

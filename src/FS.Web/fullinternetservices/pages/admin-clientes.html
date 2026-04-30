@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">👥 Gestión de Clientes</div>
+      <button class="btn btn--primary btn--sm" onclick="openModal()">+ Nuevo Cliente</button>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<!-- CLIENT MODAL -->
+<div class="modal-overlay" id="clientModal">
+  <div class="modal" style="max-width:580px">
+    <div class="modal__header">
+      <div class="modal__title" id="modalTitle">Nuevo Cliente</div>
+      <button class="modal__close" onclick="closeModal()">✕</button>
+    </div>
+    <form id="clientForm" onsubmit="submitCliente(event)" style="display:flex;flex-direction:column;gap:1rem">
+      <input type="hidden" id="clientId">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre Completo *</label>
+          <input type="text" class="form-input" id="fNombre" placeholder="Ej: María García" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de Cliente</label>
+          <select class="form-select" id="fTipo" onchange="toggleCampoCI()">
+            <option value="Natural">Persona Natural</option>
+            <option value="Juridico">Persona Jurídica</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group" id="ciGroup">
+          <label class="form-label" id="ciLabel">CI / NIT *</label>
+          <input type="text" class="form-input" id="fCI" placeholder="Número de identificación" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono *</label>
+          <input type="tel" class="form-input" id="fTelefono" placeholder="Ej: 78901234" required maxlength="8">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" class="form-input" id="fEmail" placeholder="correo@ejemplo.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dirección *</label>
+        <input type="text" class="form-input" id="fDireccion" placeholder="Ej: Av. Camacho 123, La Paz" required>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" class="btn btn--ghost btn--full" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="btn btn--primary btn--full" id="submitClientBtn">Guardar Cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal__header">
+      <div class="modal__title" id="detailTitle">Detalle del Cliente</div>
+      <button class="modal__close" onclick="document.getElementById('detailModal').classList.remove('open')">✕</button>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador','Cajero');
+renderSidebar('clientes');
+
+let editId = null;
+
+async function loadClientes() {
+  const clientes = await API.getAllClientes();
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Clientes</h2><p>${clientes.length} clientes registrados en el sistema</p></div>
+        <button class="btn btn--primary" onclick="openModal()">+ Nuevo Cliente</button>
+      </div>
+
+      <!-- Search -->
+      <div class="flex gap-2 mb-2" style="flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <span class="search-bar__icon">🔍</span>
+          <input class="form-input" id="searchInput" placeholder="Buscar por nombre, CI o email..." oninput="filterTable()" style="width:100%">
+        </div>
+        <select class="form-select" id="tipoFilter" onchange="filterTable()" style="width:160px">
+          <option value="">Todos los tipos</option>
+          <option value="Natural">Natural</option>
+          <option value="Juridico">Jurídico</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="clientesTable">
+          <thead><tr>
+            <th>#</th><th>Nombre</th><th>Tipo</th><th>CI / NIT</th>
+            <th>Teléfono</th><th>Email</th><th>Estado</th><th>Acciones</th>
+          </tr></thead>
+          <tbody id="clientesTbody">
+            ${clientes.map(c => `
+            <tr data-nombre="${c.nombre.toLowerCase()}" data-ci="${(c.ci||c.nit||'').toLowerCase()}" data-email="${c.email.toLowerCase()}" data-tipo="${c.tipo}">
+              <td class="mono" style="color:var(--text-muted);font-size:0.78rem">${c.id}</td>
+              <td><strong style="color:var(--white)">${c.nombre}</strong></td>
+              <td><span class="badge ${c.tipo==='Natural'?'badge--blue':'badge--cyan'}">${c.tipo}</span></td>
+              <td class="mono" style="font-size:0.85rem">${c.ci || c.nit || '—'}</td>
+              <td>${c.telefono}</td>
+              <td style="font-size:0.85rem;color:var(--text-muted)">${c.email}</td>
+              <td>${estadoBadge(c.activo ? 'Activo' : 'Suspendido')}</td>
+              <td>
+                <div class="actions">
+                  <button class="btn btn--ghost btn--sm" onclick="openDetail(${c.id})">👁</button>
+                  <button class="btn btn--secondary btn--sm" onclick="openEdit(${c.id})">✏️</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  window._clientes = clientes;
+}
+
+function filterTable() {
+  const q   = document.getElementById('searchInput').value.toLowerCase();
+  const tipo = document.getElementById('tipoFilter').value;
+  document.querySelectorAll('#clientesTbody tr').forEach(tr => {
+    const matchQ   = !q    || tr.dataset.nombre.includes(q) || tr.dataset.ci.includes(q) || tr.dataset.email.includes(q);
+    const matchTipo= !tipo || tr.dataset.tipo === tipo;
+    tr.style.display = (matchQ && matchTipo) ? '' : 'none';
+  });
+}
+
+function openModal(id = null) {
+  editId = id;
+  document.getElementById('modalTitle').textContent = id ? 'Editar Cliente' : 'Nuevo Cliente';
+  document.getElementById('clientForm').reset();
+  document.getElementById('clientId').value = '';
+  if (id) {
+    const c = window._clientes.find(x => x.id === id);
+    if (c) {
+      document.getElementById('clientId').value = c.id;
+      document.getElementById('fNombre').value   = c.nombre;
+      document.getElementById('fTipo').value     = c.tipo;
+      document.getElementById('fCI').value       = c.ci || c.nit || '';
+      document.getElementById('fTelefono').value = c.telefono;
+      document.getElementById('fEmail').value    = c.email;
+      document.getElementById('fDireccion').value= c.direccion;
+    }
+  }
+  toggleCampoCI();
+  document.getElementById('clientModal').classList.add('open');
+}
+function openEdit(id) { openModal(id); }
+function closeModal() { document.getElementById('clientModal').classList.remove('open'); }
+
+function toggleCampoCI() {
+  const tipo = document.getElementById('fTipo').value;
+  document.getElementById('ciLabel').textContent = tipo === 'Juridico' ? 'NIT *' : 'CI *';
+  document.getElementById('fCI').placeholder = tipo === 'Juridico' ? 'NIT de la empresa' : 'Cédula de identidad';
+}
+
+async function submitCliente(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitClientBtn');
+  const tipo = document.getElementById('fTipo').value;
+  const data = {
+    nombre:    document.getElementById('fNombre').value.trim(),
+    tipo,
+    [tipo==='Juridico'?'nit':'ci']: document.getElementById('fCI').value.trim(),
+    telefono:  document.getElementById('fTelefono').value.trim(),
+    email:     document.getElementById('fEmail').value.trim(),
+    direccion: document.getElementById('fDireccion').value.trim(),
+  };
+  if (data.telefono.length < 7) { showToast('Teléfono inválido', 'error'); return; }
+  setLoading(btn, true);
+  try {
+    if (editId) {
+      await API.updateCliente(editId, data);
+      showToast('Cliente actualizado correctamente');
+    } else {
+      await API.createCliente(data);
+      showToast('Cliente registrado exitosamente');
+    }
+    closeModal();
+    loadClientes();
+  } catch(err) { showToast(err.message, 'error'); setLoading(btn, false); }
+}
+
+async function openDetail(id) {
+  const c = window._clientes.find(x => x.id === id);
+  const contratos = await API.getContratosByCliente(id);
+  const pagos     = await API.getPagosByCliente(id);
+  const enMora    = pagos.some(p => p.estado === 'Mora');
+
+  document.getElementById('detailTitle').textContent = `👤 ${c.nombre}`;
+  document.getElementById('detailContent').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      ${enMora ? `<div class="alert alert--error"><span>⚠️</span> Este cliente tiene pagos en mora</div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;font-size:0.88rem">
+        <div><span style="color:var(--text-muted)">Tipo:</span><br><strong>${c.tipo}</strong></div>
+        <div><span style="color:var(--text-muted)">CI/NIT:</span><br><strong class="mono">${c.ci||c.nit||'—'}</strong></div>
+        <div><span style="color:var(--text-muted)">Teléfono:</span><br><strong>${c.telefono}</strong></div>
+        <div><span style="color:var(--text-muted)">Email:</span><br><strong>${c.email}</strong></div>
+        <div style="grid-column:span 2"><span style="color:var(--text-muted)">Dirección:</span><br><strong>${c.direccion}</strong></div>
+      </div>
+      <div>
+        <div class="section-title mb-1">Contratos</div>
+        ${contratos.map(ct=>`
+        <div style="background:var(--navy-3);border-radius:var(--radius-sm);padding:0.8rem;margin-bottom:0.5rem;font-size:0.85rem">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:var(--white);font-weight:600">${ct.plan?.nombre}</span>
+            ${estadoBadge(ct.estado)}
+          </div>
+          <span class="mono" style="font-size:0.75rem;color:var(--text-muted)">${ct.nroContrato}</span>
+        </div>`).join('') || '<p style="font-size:0.85rem">Sin contratos</p>'}
+      </div>
+      <div style="display:flex;gap:0.8rem">
+        <button class="btn btn--secondary btn--sm" onclick="openEdit(${id});document.getElementById('detailModal').classList.remove('open')">✏️ Editar</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+loadClientes();
+</script>
+</body>
+</html>

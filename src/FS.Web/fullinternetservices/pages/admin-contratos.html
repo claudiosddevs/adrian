@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contratos — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div class="topbar__title">📋 Gestión de Contratos</div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador','Cajero');
+renderSidebar('contratos');
+
+async function loadContratos() {
+  const contratos = await API.getAllContratos();
+  const activos  = contratos.filter(c => c.estado === 'Activo').length;
+  const vencidos = contratos.filter(c => c.estado === 'Vencido').length;
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header">
+        <h2>Contratos</h2>
+        <p>Todos los contratos del sistema y su estado de vigencia</p>
+      </div>
+
+      <div class="grid-3 mb-3">
+        <div class="stat-card stat-card--cyan">
+          <div class="stat-card__label">Total Contratos</div>
+          <div class="stat-card__value">${contratos.length}</div>
+          <div class="stat-card__icon">📋</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__label">Activos</div>
+          <div class="stat-card__value">${activos}</div>
+          <div class="stat-card__icon">✅</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__label">Vencidos</div>
+          <div class="stat-card__value">${vencidos}</div>
+          <div class="stat-card__icon">⏰</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-2 mb-2" style="flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px">
+          <span class="search-bar__icon">🔍</span>
+          <input class="form-input" id="searchC" placeholder="Buscar por N° contrato o cliente..." oninput="filterC()" style="width:100%">
+        </div>
+        <select class="form-select" id="estadoC" onchange="filterC()" style="width:150px">
+          <option value="">Todos</option>
+          <option value="Activo">Activo</option>
+          <option value="Vencido">Vencido</option>
+          <option value="Suspendido">Suspendido</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>
+            <th>N° Contrato</th><th>Cliente</th><th>Plan</th><th>Tipo</th>
+            <th>Mensualidad</th><th>Inicio</th><th>Vence</th><th>Estado</th>
+          </tr></thead>
+          <tbody id="contratosTbody">
+            ${contratos.map(c => {
+              const diasRestantes = Math.max(0, Math.ceil((new Date(c.fechaFin) - new Date()) / 86400000));
+              return `
+              <tr data-search="${c.nroContrato.toLowerCase()} ${c.cliente?.nombre?.toLowerCase()||''}" data-estado="${c.estado}">
+                <td class="mono" style="color:var(--cyan);font-size:0.82rem">${c.nroContrato}</td>
+                <td><strong style="color:var(--white);font-size:0.88rem">${c.cliente?.nombre}</strong></td>
+                <td style="font-size:0.85rem">${c.plan?.nombre}<br><span style="font-size:0.75rem;color:var(--text-muted)">${c.plan?.velocidad}</span></td>
+                <td><span class="badge ${c.plan?.tipo==='Fibra'?'badge--cyan':'badge--blue'}">${c.plan?.tipo}</span></td>
+                <td><strong style="color:var(--white)">${formatCurrency(c.montoMensual)}</strong></td>
+                <td style="font-size:0.82rem;color:var(--text-muted)">${formatDate(c.fechaInicio)}</td>
+                <td style="font-size:0.82rem">
+                  <span style="color:${diasRestantes<30&&c.estado==='Activo'?'var(--yellow)':'var(--text-muted)'}">${formatDate(c.fechaFin)}</span>
+                  ${diasRestantes<30&&c.estado==='Activo'?`<br><span class="badge badge--yellow" style="font-size:0.65rem">${diasRestantes}d</span>`:''}
+                </td>
+                <td>${estadoBadge(c.estado)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function filterC() {
+  const q   = document.getElementById('searchC').value.toLowerCase();
+  const est = document.getElementById('estadoC').value;
+  document.querySelectorAll('#contratosTbody tr').forEach(tr => {
+    const mQ = !q   || tr.dataset.search.includes(q);
+    const mE = !est || tr.dataset.estado === est;
+    tr.style.display = mQ && mE ? '' : 'none';
+  });
+}
+
+loadContratos();
+</script>
+</body>
+</html>

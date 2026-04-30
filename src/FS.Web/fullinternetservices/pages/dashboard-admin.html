@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Administrativo — Full Internet Services</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    .activity-item { display:flex;align-items:flex-start;gap:0.8rem;padding:0.7rem 0;border-bottom:1px solid rgba(51,65,85,0.4); }
+    .activity-item:last-child { border-bottom:none; }
+    .activity-dot { width:8px;height:8px;border-radius:50%;background:var(--cyan);margin-top:0.45rem;flex-shrink:0; }
+    .activity-text { font-size:0.83rem;color:var(--text-muted); }
+    .activity-text strong { color:var(--white); }
+    .activity-time { font-size:0.72rem;color:var(--gray-3);margin-top:0.15rem; }
+    .mora-row { background:rgba(239,68,68,0.05); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar__hamburger btn" id="hamburger">☰</button>
+      <div>
+        <div class="topbar__title" id="adminGreeting">Panel Administrativo</div>
+        <div class="topbar__meta" id="adminDate"></div>
+      </div>
+    </header>
+    <main class="page" id="pageContent">
+      <div class="loading-state"><div class="spinner"></div><p>Cargando dashboard...</p></div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+Auth.requireRole('Administrador','Cajero');
+const user = Auth.currentUser();
+const now = new Date();
+document.getElementById('adminDate').textContent = now.toLocaleDateString('es-BO',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+document.getElementById('adminGreeting').textContent = `${user.nombre.split(' ')[0]} — ${user.rol}`;
+renderSidebar('home');
+
+async function loadAdmin() {
+  const [resumen, mora, reclamos, pagos] = await Promise.all([
+    API.getResumenDashboard(),
+    API.getMora(),
+    API.getAllReclamos(),
+    API.getAllPagos(),
+  ]);
+
+  const reclamosAbiertos = reclamos.filter(r => r.estado !== 'Resuelto');
+  const ingresoMes = pagos.filter(p => p.estado === 'Pagado' && p.fecha?.startsWith('2025')).reduce((s,p) => s + p.monto, 0);
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="fade-in">
+      <div class="page-header flex items-center justify-between">
+        <div><h2>Dashboard Administrativo</h2><p>Resumen general del sistema</p></div>
+        <a href="reportes.html" class="btn btn--secondary btn--sm">📈 Ver Reportes</a>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="grid-4 mb-3">
+        <div class="stat-card stat-card--cyan">
+          <div class="stat-card__label">Clientes Activos</div>
+          <div class="stat-card__value">${resumen.totalClientes}</div>
+          <div class="stat-card__icon">👥</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-card__label">Contratos Activos</div>
+          <div class="stat-card__value">${resumen.contratosActivos}</div>
+          <div class="stat-card__icon">📋</div>
+        </div>
+        <div class="stat-card stat-card--red">
+          <div class="stat-card__label">En Mora</div>
+          <div class="stat-card__value">${resumen.enMora}</div>
+          <div class="stat-card__icon">⚠️</div>
+        </div>
+        <div class="stat-card stat-card--yellow">
+          <div class="stat-card__label">Reclamos Abiertos</div>
+          <div class="stat-card__value">${resumen.reclamosAbiertos}</div>
+          <div class="stat-card__icon">🎧</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- MORA TABLE -->
+        <div>
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">⚠ Clientes en Mora</span>
+              <a href="reportes.html" class="btn btn--ghost btn--sm">Ver reporte</a>
+            </div>
+            ${mora.length > 0 ? `
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Cliente</th><th>Período</th><th>Monto</th><th>Acción</th></tr></thead>
+                <tbody>
+                  ${mora.map(m => `
+                  <tr class="mora-row">
+                    <td><strong style="color:var(--white)">${m.cliente?.nombre}</strong></td>
+                    <td style="color:var(--text-muted)">${m.mes}</td>
+                    <td><strong style="color:var(--red)">${formatCurrency(m.monto)}</strong></td>
+                    <td><a href="admin-pagos.html" class="btn btn--danger btn--sm">Registrar</a></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div class="alert alert--warning mt-2" style="margin-bottom:0">
+              <span>💡</span> La mora se aplica automáticamente desde el día 12 de cada mes.
+            </div>` : `<div class="alert alert--success"><span>✓</span> Ningún cliente en mora actualmente.</div>`}
+          </div>
+
+          <!-- QUICK NAV -->
+          <div class="section">
+            <div class="section-title mb-2">Accesos Rápidos</div>
+            <div class="grid-2" style="gap:0.6rem">
+              <a href="admin-clientes.html"  class="btn btn--ghost btn--full">👥 Clientes</a>
+              <a href="admin-contratos.html" class="btn btn--ghost btn--full">📋 Contratos</a>
+              <a href="admin-pagos.html"     class="btn btn--ghost btn--full">💳 Pagos</a>
+              <a href="admin-reclamos.html"  class="btn btn--ghost btn--full">🎧 Reclamos</a>
+              <a href="reportes.html"        class="btn btn--ghost btn--full">📈 Reportes</a>
+              <a href="bitacora.html"        class="btn btn--ghost btn--full">📒 Bitácora</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- RECLAMOS & ACTIVITY -->
+        <div>
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">🎧 Reclamos Recientes</span>
+              <a href="admin-reclamos.html" class="btn btn--ghost btn--sm">Ver todos</a>
+            </div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Estado</th></tr></thead>
+                <tbody>
+                  ${reclamosAbiertos.slice(0,5).map(r => `
+                  <tr>
+                    <td class="mono" style="font-size:0.78rem;color:var(--text-muted)">#${String(r.id).padStart(4,'0')}</td>
+                    <td style="font-size:0.85rem">${r.cliente?.nombre}</td>
+                    <td>${tipoBadge(r.tipo)}</td>
+                    <td>${estadoBadge(r.estado)}</td>
+                  </tr>`).join('')}
+                  ${reclamosAbiertos.length === 0 ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem">No hay reclamos abiertos ✓</td></tr>` : ''}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title mb-2">💰 Ingresos del Mes</div>
+            <div class="card" style="padding:1.2rem">
+              <div style="font-size:2.2rem;font-weight:800;color:var(--cyan)">${formatCurrency(ingresoMes)}</div>
+              <div style="font-size:0.82rem;color:var(--text-muted);margin-top:0.3rem">${pagos.filter(p=>p.estado==='Pagado').length} pagos registrados · ${pagos.filter(p=>p.estado==='Pendiente'||p.estado==='Mora').length} pendientes</div>
+              <div class="progress-bar mt-2">
+                <div class="progress-bar__fill" style="width:${Math.min(100,(pagos.filter(p=>p.estado==='Pagado').length/pagos.length)*100)}%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+loadAdmin();
+</script>
+</body>
+</html>
