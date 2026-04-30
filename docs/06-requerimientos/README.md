@@ -1,6 +1,6 @@
 # 06 — Requerimientos y Matriz de Cumplimiento
 
-Trazabilidad de los 18 RF y 14 RNF del PDF a su implementación arquitectónica.
+Trazabilidad de los 18 RF y 14 RNF del PDF a su implementación arquitectónica. Actualizado con el estado real del repositorio.
 
 ---
 
@@ -15,28 +15,32 @@ Trazabilidad de los 18 RF y 14 RNF del PDF a su implementación arquitectónica.
 mindmap
   root((FIS))
     Funcional 18
-      Autenticación HU01
-      Clientes HU03
-      Servicios HU04
-      Contratos HU05
-      Pagos HU07-HU09
-      Mora HU10
-      Reclamos HU14-HU17
-      Reportes HU20-HU22
+      RF01 Autenticación JWT
+      RF02 Clientes CRUD
+      RF03-04 Planes y servicios
+      RF05 Contratos
+      RF06-07 Pagos y anulación
+      RF08 Control mora
+      RF09-13 Soporte técnico
+      RF14-15 Reportes
+      RF16 Usuarios y roles
+      RF17 Bitácora
     No Funcional 14
       Seguridad
-        RBAC
-        Cifrado
-        BCrypt
+        RBAC completo
+        JWT + BCrypt
+        HTTPS/TLS
       Rendimiento
         3s respuesta
+        Paginación
+        Índices SQL
+      Disponibilidad
         99% uptime
+        App Service
       Datos
         3FN
-        Backups
-      Escalabilidad
-        Multi-instance
-        Cache
+        Backups Azure
+        Bitácora (RF17)
 ```
 
 </details>
@@ -45,57 +49,104 @@ mindmap
 
 ## 6.2 Matriz de Requerimientos Funcionales
 
-| Cód. | Descripción | HU | Implementación | Estado |
-|---|---|---|---|---|
-| RF01 | Autenticación con login y biometría | HU01 | `AuthController` + JWT; biométrico planificado | **PoC** |
-| RF02 | Gestión de roles y permisos | HU02 | RBAC con `[Authorize(Roles = ...)]` | **PoC** |
-| RF03 | Registro / actualización de clientes | HU03 | `ClientesController` + `sp_cliente_*` | Diseñado |
-| RF04 | Gestión de servicios y planes | HU04 | `PlanesController` (pendiente) | Diseñado |
-| RF05 | Registro de contratos | HU05 | `Contrato` entity + repo | Diseñado |
-| RF06 | Renovación / cancelación de contratos | HU06 | `Contrato.Cancelar()`, `Suspender()` | Diseñado |
-| RF07 | Registro de pagos | HU07 | `RegistrarPagoCommand` + `sp_pago_insert` | Diseñado |
-| RF08 | Pagos en línea | HU08 | App Web + AAD B2C + pasarela | Roadmap |
-| RF09 | Anulación de pagos | HU09 | `AnularPagoCommand` (Admin only) | Diseñado |
-| RF10 | Control de mora | HU10 | `Mora` entity + `Job sp_actualizar_mora` | Diseñado |
-| RF11 | Cálculo automático recargo 10% | HU10 | `CalculadoraMoraService` (con tests) | **Implementado** |
-| RF12 | Suspensión por morosidad | HU11 | `Mora.CortarServicio()` + Job diario | Diseñado |
-| RF13 | Recepción de reclamos | HU14 | `ReclamosController` + canales | Diseñado |
-| RF14 | Asignación de técnicos | HU15 | `sp_reclamo_asignar_tecnico` (límite 5) | Diseñado |
-| RF15 | Cierre y calificación de reclamos | HU16 | `Reclamo.RegistrarSolucion()` + `Calificar()` | **Implementado** (entidad) |
-| RF16 | Grabación y resguardo de llamadas | HU17 | Blob Storage + hash SHA256 | Diseñado |
-| RF17 | Reportes operativos | HU20-HU21 | `sp_reporte_mora`, vistas SQL | Diseñado |
-| RF18 | Auditoría / Bitácora | HU22 | Triggers SQL + `BitacoraService` | Diseñado |
+| Cód. | Nombre | Rol | API | Desktop | Estado |
+|---|---|---|---|---|---|
+| RF01 | Autenticación | Admin, Técnico | `POST /auth/login` | `frmLogin` | ✓ **JWT** — biometría roadmap |
+| RF02 | Gestión de clientes | Admin | `GET/POST/PUT/DELETE /clientes` | `frmClientes` + `frmClienteDetalle` | ✓ **Completo** |
+| RF03 | Gestión de servicios | Admin | `GET/POST/PUT/DELETE /planes` | `frmPlanes` + `frmPlanDetalle` | ✓ **Completo** |
+| RF04 | Gestión de planes internet | Admin | `GET/POST/PUT/DELETE /planes` | `frmPlanes` | ✓ **Completo** (velocidades Mbps) |
+| RF05 | Registro de contratos | Admin | `GET/POST /contratos`, `PATCH .../estado` | `frmContratos` + `frmContratoNuevo` | ✓ **Completo** |
+| RF06 | Registro de pagos | Admin, Sistema | `GET/POST /pagos` | `frmPagos` + `frmRegistrarPago` | ✓ **Completo** |
+| RF07 | Anulación de pagos | Admin | `POST /pagos/anular` | `frmPagos` | ✓ **Completo** |
+| RF08 | Control de mora (día 12) | Sistema | `GET /reportes/mora` | `frmReportes` tab Mora | ✓ **Completo** |
+| RF09 | Registro de reclamos | Técnico | `POST /reclamos` | `frmReclamos` + `frmRegistrarReclamo` | ✓ **Completo** |
+| RF10 | Clasificación de reclamos | Técnico | `POST /reclamos` (campo `clasificacion`) | `frmRegistrarReclamo` (combo Leve/Medio/Complejo) | ✓ **Completo** |
+| RF11 | Asignación de técnicos | Admin | `PATCH /reclamos/{id}/tecnico` | `frmReclamos` | ✓ **Completo** (límite 5 activos) |
+| RF12 | Estado de soporte | Técnico | `PATCH /reclamos/{id}/estado` | `frmCambiarEstadoReclamo` | ✓ **Completo** (4 estados) |
+| RF13 | Grabación de llamadas | Sistema | Modelo (`RutaAudio`, `HashSha256`) | — | Modelo listo — Azure Blob en roadmap |
+| RF14 | Evaluación de técnicos | Admin | `GET /reportes/tecnicos` | `frmReportes` tab Técnicos | ✓ **Completo** |
+| RF15 | Generación de reportes | Admin | `GET /reportes/mora`, `/ventas`, `/tecnicos` | `frmReportes` (3 pestañas) | ✓ **Completo** |
+| RF16 | Gestión de usuarios y roles | Admin | `GET/POST /usuarios` | `frmUsuarios` + `frmUsuarioNuevo` | ✓ **Completo** |
+| RF17 | Bitácora de operaciones | Sistema | `GET /reportes/bitacora` | — | ✓ **Completo** (entidad + migración) |
+| RF18 | Plataforma web de pagos | Cliente | — | — | **Roadmap** Fase 2 |
 
 ### Leyenda de estados
-- **Implementado**: código y tests ya en repo.
-- **PoC**: vertical funcional para demostrar el patrón.
-- **Diseñado**: arquitectura definida, falta el código.
-- **Roadmap**: Fase 2 (post-MVP).
+
+- ✓ **Completo**: endpoint + handler + repositorio + formulario WinForms.
+- ✓ **JWT**: autenticación estándar sin biometría.
+- Modelo listo: entidad y estructura DB definidos; integración pendiente.
+- **Roadmap**: planificado para Fase 2 (post-MVP).
 
 ---
 
-## 6.3 Matriz de Requerimientos No Funcionales
+## 6.3 Detalle de Implementación por RF Clave
 
-| Cód. | RNF | Estrategia | Sección Docs |
+### RF08 — Control de Mora
+
+La lógica en `ReporteService`:
+
+```csharp
+if (hoy.Day <= 12) return new List<ReporteMoraDto>();
+
+return await _ctx.Contratos
+    .Where(c => c.Estado == EstadoContrato.Activo)
+    .Select(c => new ReporteMoraDto {
+        MontoMora = c.Plan.PrecioMensual * 0.10m,
+        DiasAtraso = hoy.Day - 12
+    })
+    .ToListAsync(ct);
+```
+
+### RF11 — Límite de Reclamos por Técnico
+
+La entidad `Reclamo` encapsula la regla de negocio:
+
+```csharp
+private const int MaxReclamosPorTecnico = 5;
+
+public void AsignarTecnico(int idTecnico, int reclamosActivosDelTecnico)
+{
+    if (reclamosActivosDelTecnico >= MaxReclamosPorTecnico)
+        throw new BusinessException(
+            $"El técnico ha alcanzado el límite de {MaxReclamosPorTecnico} reclamos activos.");
+    IdTecnico = idTecnico;
+    if (Estado == EstadoReclamo.Recepcionado)
+        Estado = EstadoReclamo.EnProceso;
+}
+```
+
+### RF17 — Bitácora
+
+La tabla `BITACORA` se crea con la migración `AddBitacora`. Los triggers SQL la alimentan automáticamente. Desde la API es de solo lectura:
+
+```csharp
+GET /api/v1/reportes/bitacora?page=1&pageSize=50&tabla=PAGO
+```
+
+---
+
+## 6.4 Matriz de Requerimientos No Funcionales
+
+| Cód. | RNF | Estrategia de implementación | Estado |
 |---|---|---|---|
-| RNF01 | Acceso solo a usuarios registrados | JWT obligatorio + middleware | [02-backend §2.4](../02-backend/README.md#24-autenticación-y-autorización-rbac) |
-| RNF02 | Permisos según rol (RBAC) | `[Authorize(Roles=...)]` + UI filtrada | [02-backend §2.4](../02-backend/README.md#24-autenticación-y-autorización-rbac) |
-| RNF03 | Disponibilidad 99% | App Service P1v3 multi-instance, SLA 99.95% | [05-cloud §5.3](../05-cloud-azure/README.md#53-ambientes) |
-| RNF04 | Tiempo de respuesta < 3s | Índices + cache Redis + paginación | [03-bd §3.4](../03-base-datos/README.md#34-estrategia-de-indexado) |
-| RNF05 | Soporte concurrencia 50 usuarios | App Service auto-scale + connection pooling | [05-cloud §5.1](../05-cloud-azure/README.md) |
-| RNF06 | Bloqueo tras 5 intentos fallidos | `Usuario.RegistrarIntentoFallido()` + trigger | [02-backend §2.4](../02-backend/README.md#bloqueo-por-intentos-fallidos-rnf06) |
-| RNF07 | Cifrado de datos | HTTPS/TLS 1.3 + BCrypt + TDE en SQL | [02-backend §2.4](../02-backend/README.md) |
-| RNF08 | Integridad referencial | FKs + triggers + transacciones | [03-bd §3.6](../03-base-datos/README.md#36-triggers) |
-| RNF09 | Escalabilidad | Auto-scale + caching + queue para jobs | [07-mejoras §3.4](../07-mejoras/README.md#34-caching) |
-| RNF10 | Mantenibilidad | Clean Architecture + tests + docs | [01-arquitectura §1.2](../01-arquitectura/README.md#12-arquitectura-por-capas-clean-architecture) |
-| RNF11 | Eliminación lógica (no física) | `Activo = false` + filtros en queries | [03-bd §3.1](../03-base-datos/README.md) |
-| RNF12 | Almacenamiento seguro de audios | Blob privado + SAS firmado + SHA256 | [05-cloud §5.1](../05-cloud-azure/README.md) |
-| RNF13 | Backup diario | Azure SQL backup automático + LTR | [05-cloud §5.6](../05-cloud-azure/README.md#56-estrategia-de-backup-y-dr) |
-| RNF14 | Exportación a Excel/PDF | EPPlus + QuestPDF en endpoints `/reportes/...` | [02-backend §2.3](../02-backend/README.md#23-endpoints-rest-poc-actual--diseño-completo) |
+| RNF01 | Seguridad de acceso — biometría | JWT obligatorio + middleware; biométrico planificado con Azure Face API | ✓ JWT implementado |
+| RNF02 | Control de acceso por roles | `[Authorize(Roles=...)]` en todos los endpoints + UI filtrada por `SesionUsuario` | ✓ Completo |
+| RNF03 | Auditoría / bitácora | Triggers SQL + entidad `BitacoraOperacion` + endpoint `GET /reportes/bitacora` | ✓ Completo |
+| RNF04 | Rendimiento < 3s | Índices `IX_*` + paginación + `ReporteService` con queries optimizadas | ✓ Diseñado |
+| RNF05 | Disponibilidad 99% | App Service P1v3 multi-instance, SLA 99.95% Azure | ✓ Diseñado |
+| RNF06 | Almacenamiento de audios | Modelo `Reclamo.RutaAudio` + `HashSha256`; Azure Blob en roadmap | Modelo listo |
+| RNF07 | Seguridad de datos | HTTPS/TLS + BCrypt + TDE en Azure SQL | ✓ Implementado |
+| RNF08 | Usabilidad | UI adaptada por rol, formularios intuitivos, mensajes de error claros | ✓ Implementado |
+| RNF09 | Compatibilidad | API REST + WinForms `net9.0-windows` | ✓ Implementado |
+| RNF10 | Multiplataforma | API desplegable en Linux/Azure; Desktop Windows | ✓ Diseñado |
+| RNF11 | Escalabilidad | Auto-scale + paginación en todos los listados | ✓ Diseñado |
+| RNF12 | Respaldo de información | Azure SQL backup automático + LTR | ✓ Diseñado |
+| RNF13 | Integridad de datos | FKs + triggers + transacciones + `IUnitOfWork` | ✓ Implementado |
+| RNF14 | Exportación de reportes | EPPlus (Excel) + QuestPDF en roadmap; actualmente JSON vía API | Roadmap |
 
 ---
 
-## 6.4 Modelo de Calidad (McCall)
+## 6.5 Modelo de Calidad (McCall)
 
 <img src="../diagrams/19-mccall-calidad.png" alt="Modelo McCall" width="900" />
 
@@ -113,40 +164,48 @@ flowchart TD
     OP --> FIAB[Fiabilidad<br/>SLA + retries]
     OP --> EFIC[Eficiencia<br/>Índices + Cache]
     OP --> INTEG[Integridad<br/>RBAC + cifrado]
-    OP --> USA[Usabilidad<br/>UI por rol]
+    OP --> USA[Usabilidad<br/>UI por rol + 12 formularios]
 
-    REV --> MANT[Mantenibilidad<br/>Clean Arch]
-    REV --> FLEX[Flexibilidad<br/>CQRS + DI]
+    REV --> MANT[Mantenibilidad<br/>Clean Arch + CQRS]
+    REV --> FLEX[Flexibilidad<br/>Handlers intercambiables]
     REV --> CHECK[Checkability<br/>Tests + xUnit]
 
-    TRA --> PORT[Portabilidad<br/>.NET 9 cross-plat]
+    TRA --> PORT[Portabilidad<br/>.NET 9 cross-plat API]
     TRA --> REUS[Reusabilidad<br/>Contracts compartidos]
     TRA --> INTER[Interoperabilidad<br/>API REST + OpenAPI]
 ```
 
 </details>
 
-| Pilar | Cobertura |
+| Pilar | Cobertura actual |
 |---|---|
-| Corrección | Tests xUnit (9 hechos), FluentValidation por comando |
-| Fiabilidad | SLA Azure 99.95%, transacciones EF, retry policies |
-| Eficiencia | Índices `IX_*`, cache Redis, paginación |
-| Integridad | JWT + RBAC + BCrypt + HTTPS + TDE |
-| Mantenibilidad | 4 capas, dependencias unidireccionales, naming en español |
+| Corrección | 9 tests xUnit, FluentValidation en comandos, middleware de excepciones |
+| Fiabilidad | SLA Azure 99.95%, transacciones EF, `IUnitOfWork` |
+| Eficiencia | Índices `IX_*`, paginación en todos los listados, `IReporteService` |
+| Integridad | JWT + RBAC + BCrypt + HTTPS + TDE + bitácora RF17 |
+| Usabilidad | 12 formularios WinForms, UI por rol, mensajes descriptivos |
+| Mantenibilidad | 4 capas, 25 handlers, naming en español |
 
 ---
 
-## 6.5 Historias de Usuario y Priorización
+## 6.6 Historias de Usuario — Estado Actualizado
 
-Resumen de las 22 HU del PDF con criterios MoSCoW y Story Points (capítulo 3.4 del PDF).
-
-| HU | Título | Prioridad | SP | Estado |
+| HU | Título | Prioridad | SP | Estado Actual |
 |---|---|---|---|---|
-| HU01 | Login con biometría | M (Must) | 13 | PoC sin biometría |
-| HU03 | Gestión de clientes | M | 5 | PoC GET listado |
-| HU07 | Registrar pago | M | 8 | Diseñado |
-| HU08 | Pagos en línea | S (Should) | 13 | Roadmap |
-| HU17 | Grabación de llamadas | C (Could) | 8 | Diseñado |
-| HU20 | Reportes operativos | S | 5 | Diseñado |
-
-> Lista completa: ver tablas HU01-HU22 del PDF, sección 3.4.
+| HU01 | Login con biometría | M (Must) | 13 | ✓ Login JWT — biometría roadmap |
+| HU02 | Gestión de roles | M | 5 | ✓ RBAC + `UsuariosController` |
+| HU03 | Gestión de clientes | M | 5 | ✓ CRUD completo |
+| HU04 | Gestión de planes | M | 5 | ✓ `PlanesController` completo |
+| HU05 | Registro de contratos | M | 8 | ✓ `ContratosController` |
+| HU06 | Suspensión de contratos | M | 3 | ✓ `PATCH .../estado` |
+| HU07 | Registrar pago | M | 8 | ✓ `PagosController` |
+| HU08 | Pagos en línea (web) | S (Should) | 13 | **Roadmap** Fase 2 |
+| HU09 | Anulación de pagos | M | 5 | ✓ `POST /pagos/anular` |
+| HU10 | Control de mora | M | 5 | ✓ `GET /reportes/mora` |
+| HU14 | Recepción de reclamos | M | 8 | ✓ `ReclamosController` |
+| HU15 | Asignación de técnicos | M | 5 | ✓ `PATCH .../tecnico` |
+| HU16 | Cierre de reclamos | M | 5 | ✓ `PATCH .../estado` + `RegistrarSolucion` |
+| HU17 | Grabación de llamadas | C (Could) | 8 | Modelo + campo; storage roadmap |
+| HU20 | Reportes operativos | S | 5 | ✓ Mora / Ventas / Técnicos |
+| HU21 | Reporte técnicos ineficientes | S | 3 | ✓ `GET /reportes/tecnicos` |
+| HU22 | Auditoría / bitácora | S | 5 | ✓ Tabla + migración + endpoint |

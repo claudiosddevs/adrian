@@ -1,6 +1,6 @@
 # 02 — Backend (ASP.NET Core 9 + EF Core)
 
-Documenta la implementación del backend: estructura de proyectos, endpoints REST, autenticación, RBAC, estrategia de persistencia y patrones aplicados.
+Documenta la implementación completa del backend: estructura de proyectos, todos los endpoints REST, autenticación, RBAC, estrategia de persistencia y patrones aplicados.
 
 ---
 
@@ -32,9 +32,9 @@ graph LR
 | `FIS.Api` | Capa de Presentación HTTP — Controllers, middleware, Swagger. | `net9.0` |
 | `FIS.Application` | Casos de uso, comandos/queries, validadores. | `net9.0` |
 | `FIS.Domain` | Núcleo: entidades, enums, servicios de dominio. | `net9.0` |
-| `FIS.Infrastructure` | EF Core, repositorios, JWT, BCrypt, adapters. | `net9.0` |
+| `FIS.Infrastructure` | EF Core, repositorios, JWT, BCrypt, adapters, ReporteService. | `net9.0` |
 | `FIS.Contracts` | DTOs compartidos (API ↔ Desktop ↔ Web). | `net9.0` |
-| `FIS.Desktop` | Cliente WinForms. | `net9.0-windows` |
+| `FIS.Desktop` | Cliente WinForms — 12 formularios. | `net9.0-windows` |
 | `FIS.*.Tests` | xUnit + FluentAssertions + Microsoft.AspNetCore.Mvc.Testing. | `net9.0` |
 
 ---
@@ -44,47 +44,85 @@ graph LR
 ```
 FIS.Api/
 ├── Controllers/
-│   ├── AuthController.cs           ← Login (HU01)
-│   ├── ClientesController.cs       ← Endpoint protegido demo (HU03)
-│   └── ... (futuros: Pagos, Reclamos, Contratos)
+│   ├── AuthController.cs           ← Login (RF01 / HU01)
+│   ├── ClientesController.cs       ← CRUD clientes (RF02)
+│   ├── PlanesController.cs         ← CRUD planes y servicios (RF03, RF04)
+│   ├── ContratosController.cs      ← Registro y estado de contratos (RF05)
+│   ├── PagosController.cs          ← Pagos y anulación (RF06, RF07)
+│   ├── ReclamosController.cs       ← Soporte técnico (RF09-RF13)
+│   ├── UsuariosController.cs       ← Gestión de usuarios y roles (RF16)
+│   └── ReportesController.cs       ← Reportes + bitácora (RF14, RF15, RF17)
 ├── Identity/
 │   └── CurrentUserService.cs       ← Resuelve usuario desde JWT
 ├── Middleware/
 │   ├── ExceptionHandlingMiddleware.cs
 │   └── ValidationBehavior.cs       ← Pipeline de MediatR
-├── Program.cs                      ← Bootstrap + DI + JWT + Swagger
+├── Program.cs                      ← Bootstrap + DI + JWT + Swagger + Seeder
 ├── appsettings.json
 └── appsettings.Development.json
 ```
 
 ---
 
-## 2.3 Endpoints REST (PoC actual + diseño completo)
+## 2.3 Endpoints REST — Implementación Completa
 
-| Versión | Verbo | Ruta | Roles | RF / HU |
-|---|---|---|---|---|
-| v1 | POST | `/api/v1/auth/login` | público | HU01 |
-| v1 | POST | `/api/v1/auth/refresh` | autenticado | RNF02 |
-| v1 | POST | `/api/v1/auth/biometrico` | público | HU01 |
-| v1 | GET | `/api/v1/clientes` | Admin, Cajero | HU03 |
-| v1 | POST | `/api/v1/clientes` | Admin, Cajero | HU03 |
-| v1 | GET | `/api/v1/clientes/{id}` | Admin, Cajero | HU03 |
-| v1 | PUT | `/api/v1/clientes/{id}` | Admin, Cajero | HU03 |
-| v1 | DELETE | `/api/v1/clientes/{id}` | Admin | RNF11 |
-| v1 | POST | `/api/v1/contratos` | Admin, Cajero | HU05 |
-| v1 | POST | `/api/v1/pagos` | Admin, Cajero | HU07 |
-| v1 | POST | `/api/v1/pagos/{id}/anular` | Admin | HU09 |
-| v1 | GET | `/api/v1/reportes/mora` | Admin | HU20 |
-| v1 | POST | `/api/v1/reclamos` | Admin, Cajero | HU14 |
-| v1 | POST | `/api/v1/reclamos/{id}/asignar` | Admin | HU15 |
-| v1 | PATCH | `/api/v1/reclamos/{id}/cerrar` | Admin, Técnico | HU16 |
+### Autenticación
+| Verbo | Ruta | Roles | RF |
+|---|---|---|---|
+| POST | `/api/v1/auth/login` | público | RF01 |
 
-> Marcados en **negrita** los endpoints implementados como **PoC vertical** en este repositorio.
+### Clientes (RF02)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/clientes` | Admin, Cajero | Lista paginada con filtro |
+| GET | `/api/v1/clientes/{id}` | Admin, Cajero | Obtener por ID |
+| POST | `/api/v1/clientes` | Admin | Crear cliente |
+| PUT | `/api/v1/clientes/{id}` | Admin | Actualizar datos |
+| DELETE | `/api/v1/clientes/{id}` | Admin | Desactivar (lógico) |
 
-### Implementados como PoC vertical
-- **POST `/api/v1/auth/login`** → emite JWT.
-- **GET `/api/v1/clientes`** → listado paginado, requiere rol Admin/Cajero.
-- **GET `/api/v1/clientes/admin-only`** → demo de RBAC, requiere rol Admin.
+### Planes de Servicio (RF03, RF04)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/planes` | público | Lista de planes activos |
+| POST | `/api/v1/planes` | Admin | Crear plan |
+| PUT | `/api/v1/planes/{id}` | Admin | Actualizar plan |
+| DELETE | `/api/v1/planes/{id}` | Admin | Desactivar plan |
+
+### Contratos (RF05)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/contratos` | Admin, Cajero | Lista paginada |
+| POST | `/api/v1/contratos` | Admin | Registrar contrato |
+| PATCH | `/api/v1/contratos/{id}/estado` | Admin | Suspender / Reactivar / Finalizar |
+
+### Pagos (RF06, RF07, RF08)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/pagos` | Admin, Cajero | Lista paginada |
+| POST | `/api/v1/pagos` | Admin, Cajero | Registrar pago (detecta mora día 12) |
+| POST | `/api/v1/pagos/anular` | Admin | Anular pago con motivo |
+
+### Reclamos / Soporte Técnico (RF09-RF13)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/reclamos` | Admin, Técnico | Lista con filtro por estado/técnico |
+| POST | `/api/v1/reclamos` | Admin, Técnico | Registrar reclamo |
+| PATCH | `/api/v1/reclamos/{id}/tecnico` | Admin | Asignar técnico (límite 5 activos) |
+| PATCH | `/api/v1/reclamos/{id}/estado` | Admin, Técnico | Cambiar estado / registrar solución |
+
+### Usuarios (RF16)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/usuarios` | Admin | Listar todos los usuarios |
+| POST | `/api/v1/usuarios` | Admin | Crear usuario con rol |
+
+### Reportes (RF14, RF15, RF17)
+| Verbo | Ruta | Roles | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/reportes/mora` | Admin | Clientes con mora activa (día > 12) |
+| GET | `/api/v1/reportes/ventas?anio=2026` | Admin | Contratos e ingresos por mes |
+| GET | `/api/v1/reportes/tecnicos` | Admin | % resolución y calificación por técnico |
+| GET | `/api/v1/reportes/bitacora` | Admin | Bitácora de operaciones paginada (RF17) |
 
 ---
 
@@ -122,19 +160,18 @@ sequenceDiagram
 
 | Rol | Permisos |
 |---|---|
-| **Administrador** | Todo (CRUD usuarios, anular pagos, gestión integral, reportes ejecutivos) |
-| **Cajero** | Clientes (CRUD), contratos (crear/leer), pagos (registrar), no anula |
-| **Técnico** | Reclamos asignados (lectura, cambiar estado, registrar solución, audio) |
-| **Cliente** | Su propio perfil, sus pagos, abrir reclamos web |
-
-Implementación en C#:
+| **Administrador** | Todo: CRUD usuarios, anular pagos, asignar técnicos, gestión integral, todos los reportes |
+| **Cajero** | Clientes (CRUD), contratos (leer/crear), pagos (registrar), reclamos (leer) |
+| **Técnico** | Reclamos asignados (leer, cambiar estado, registrar solución) |
+| **Cliente** | Su propio perfil (Fase 2 — plataforma web) |
 
 ```csharp
+// Ejemplo de doble restricción en un solo controller
 [Authorize(Roles = $"{Roles.Administrador},{Roles.Cajero}")]
 public async Task<IActionResult> Listar(...) { ... }
 
 [Authorize(Roles = Roles.Administrador)]
-public IActionResult SoloAdmin() => Ok(...);
+public async Task<IActionResult> Anular(...) { ... }
 ```
 
 ### Bloqueo por intentos fallidos (RNF06)
@@ -154,7 +191,7 @@ public void RegistrarIntentoFallido()
 
 ## 2.5 CQRS con MediatR
 
-Cada caso de uso se modela como Command (mutación) o Query (lectura), con su Handler y opcionalmente su Validator.
+Cada caso de uso se modela como **Command** (mutación) o **Query** (lectura), con su Handler y opcionalmente su Validator (FluentValidation).
 
 <img src="../diagrams/08-backend-cqrs-pipeline.png" alt="CQRS pipeline" width="800" />
 
@@ -175,23 +212,32 @@ flowchart LR
 
 </details>
 
-### Estructura por feature
+### Handlers implementados
+
 ```
 FIS.Application/
-├── Auth/
-│   └── Login/
-│       ├── LoginCommand.cs
-│       ├── LoginCommandHandler.cs
-│       └── LoginCommandValidator.cs
+├── Auth/Login/
+│   ├── LoginCommand.cs + Handler + Validator
 ├── Clientes/
-│   ├── Commands/
-│   │   ├── CrearClienteCommand.cs
-│   │   └── ...
-│   └── Queries/
-│       └── ListarClientesQuery.cs
-└── Pagos/
-    ├── Commands/RegistrarPagoCommand.cs
-    └── Queries/...
+│   ├── Commands/ CrearClienteCommand, ActualizarClienteCommand, DesactivarClienteCommand
+│   └── Queries/  ListarClientesQuery, ObtenerClienteQuery
+├── Planes/
+│   ├── Commands/ CrearPlanCommand, ActualizarPlanCommand, DesactivarPlanCommand
+│   └── Queries/  ListarPlanesQuery
+├── Contratos/
+│   ├── Commands/ RegistrarContratoCommand, CambiarEstadoContratoCommand
+│   └── Queries/  ListarContratosQuery
+├── Pagos/
+│   ├── Commands/ RegistrarPagoCommand, AnularPagoCommand
+│   └── Queries/  ListarPagosQuery
+├── Reclamos/
+│   ├── Commands/ RegistrarReclamoCommand, AsignarTecnicoCommand, CambiarEstadoReclamoCommand
+│   └── Queries/  ListarReclamosQuery
+├── Usuarios/
+│   ├── Commands/ CrearUsuarioCommand
+│   └── Queries/  ListarUsuariosQuery
+└── Reportes/Queries/
+    ├── ReporteMoraQuery, ReporteVentasQuery, ReporteTecnicosQuery, BitacoraQuery
 ```
 
 ---
@@ -202,35 +248,58 @@ FIS.Application/
 
 | Operación | Mecanismo |
 |---|---|
-| CRUD básico (Cliente, Plan, Rol) | EF Core con LINQ |
-| Reglas atómicas (registrar pago + recargo + numeración) | Llamada al SP `sp_pago_insert` desde EF (`Database.SqlQuery`) |
-| Auditoría (Bitácora) | Triggers SQL existentes (transparente para C#) |
-| Reportes pesados | Vistas SQL + EF `FromSqlRaw` |
+| CRUD básico (Clientes, Planes, Roles) | EF Core con LINQ |
+| Reglas atómicas (pago + numeración + mora) | Lógica en Handler + UoW |
+| Reportes con joins complejos | `IReporteService` → EF LINQ con Include |
+| Auditoría (Bitácora) | Triggers SQL + entidad `BitacoraOperacion` (read-only desde API) |
 
 ### Configuración Fluent API
 
-Cada entidad tiene su `IEntityTypeConfiguration<T>` en `FIS.Infrastructure/Persistence/Configurations/`. Mapean **uno-a-uno** al DDL de `db/db.sql`:
+Cada entidad tiene su `IEntityTypeConfiguration<T>` en `Configurations/`. Las 9 configuraciones activas:
 
-```csharp
-public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
-{
-    public void Configure(EntityTypeBuilder<Cliente> b)
-    {
-        b.ToTable("CLIENTE", t =>
-            t.HasCheckConstraint("CK_CLIENTE_tipo", "tipo_cliente IN ('N','J')"));
-        b.HasIndex(x => x.NitCi).IsUnique().HasDatabaseName("IX_CLIENTE_nit");
-        // ... (mapeo completo de columnas y restricciones)
-    }
-}
-```
+| Clase de configuración | Tabla SQL |
+|---|---|
+| `RolConfiguration` | `dbo.ROL` |
+| `UsuarioConfiguration` | `dbo.USUARIO` |
+| `ClienteConfiguration` | `dbo.CLIENTE` |
+| `PlanServicioConfiguration` | `dbo.PLAN_SERVICIO` |
+| `ContratoConfiguration` | `dbo.CONTRATO` |
+| `PagoConfiguration` | `dbo.PAGO` |
+| `MoraConfiguration` | `dbo.MORA` |
+| `ReclamoConfiguration` | `dbo.RECLAMO` |
+| `BitacoraConfiguration` | `dbo.BITACORA` (migración `AddBitacora`) |
 
 ### Repositorios
 
-Patrón **Repository + Unit of Work**, con `FisDbContext` implementando `IUnitOfWork`. Las interfaces viven en `FIS.Domain.Interfaces` (Inversión de Dependencia).
+| Interfaz | Implementación | Responsabilidad |
+|---|---|---|
+| `IUsuarioRepository` | `UsuarioRepository` | Auth + gestión usuarios |
+| `IClienteRepository` | `ClienteRepository` | CRUD clientes con paginación |
+| `IPlanRepository` | `PlanRepository` | CRUD planes |
+| `IContratoRepository` | `ContratoRepository` | Contratos + numeración automática |
+| `IPagoRepository` | `PagoRepository` | Pagos + numeración de recibo |
+| `IReclamoRepository` | `ReclamoRepository` | Reclamos + conteo por técnico |
+| `IReporteService` | `ReporteService` | Consultas analíticas (mora, ventas, técnicos, bitácora) |
 
 ---
 
-## 2.7 Manejo Centralizado de Errores
+## 2.7 Seeder de Datos de Demostración
+
+Al arrancar en `Development`, el `DemoDataSeeder` inserta:
+
+| Entidad | Cant. | Descripción |
+|---|---|---|
+| Roles | 4 | Administrador, Cajero, Tecnico, Cliente |
+| Usuarios | 6 | admin, cajero1, cajero2, tecnico1, tecnico2, tecnico3 |
+| Clientes | 12 | Naturales y jurídicos (Cochabamba, La Paz, Santa Cruz…) |
+| Planes | 8 | Internet 10/25/50/100 Mbps, Fibra 200 Mbps, Hosting, Dominio |
+| Contratos | 12 | Activos, finalizados y suspendidos |
+| Pagos | 20+ | Normales, con mora (10%) y un pago anulado |
+| Reclamos | 8 | Estados: Recepcionado / En Proceso / Observado / Cerrado |
+
+---
+
+## 2.8 Manejo Centralizado de Errores
 
 `ExceptionHandlingMiddleware` traduce excepciones a respuestas HTTP coherentes:
 
@@ -239,71 +308,51 @@ Patrón **Repository + Unit of Work**, con `FisDbContext` implementando `IUnitOf
 | `ValidationException` (FluentValidation) | 400 | `ApiResponse.ValidationFail(errors)` |
 | `BusinessException` (dominio) | 422 | `ApiResponse.Fail(message, code)` |
 | `UnauthorizedAccessException` | 401 | `ApiResponse.Fail("No autorizado")` |
-| `Exception` (genérica) | 500 | `ApiResponse.Fail("Error interno")` (mensaje sanitizado) |
+| `Exception` (genérica) | 500 | `ApiResponse.Fail("Error interno")` |
 
 ---
 
-## 2.8 Versionado de API
+## 2.9 Versionado de API
 
-Esquema **URL-segment** (`/api/v1/...`) usando el paquete `Asp.Versioning.Mvc`. Configurado en `Program.cs`:
-
-```csharp
-builder.Services.AddApiVersioning(opt =>
-{
-    opt.DefaultApiVersion = new ApiVersion(1, 0);
-    opt.AssumeDefaultVersionWhenUnspecified = true;
-    opt.ReportApiVersions = true;
-}).AddApiExplorer(opt =>
-{
-    opt.GroupNameFormat = "'v'VVV";
-    opt.SubstituteApiVersionInUrl = true;
-});
-```
-
-Detalle en [07-mejoras/versionado-api](../07-mejoras/README.md#33-versionado-de-api).
+Esquema **URL-segment** (`/api/v1/...`) usando `Asp.Versioning.Mvc`. La versión `v1` contiene todos los endpoints actuales.
 
 ---
 
-## 2.9 Logging y Observabilidad
+## 2.10 Logging y Observabilidad
 
-- **Serilog** como provider, con sinks Console (Dev) y Application Insights + Blob Storage (Prod).
-- `UseSerilogRequestLogging()` registra cada petición HTTP con duración, status code y traceId.
+- **Serilog** con sinks Console (Dev) y Application Insights + Blob Storage (Prod).
+- `UseSerilogRequestLogging()` registra duración, status code y traceId de cada petición.
 - Configuración por ambiente vía `appsettings.{Environment}.json`.
 
 ---
 
-## 2.10 Cómo Probar la PoC
+## 2.11 Cómo Probar la API
 
 ```powershell
 # 1. Arrancar el API
 dotnet run --project src/FIS.Api
 
-# 2. Login (con admin/Admin123*)
+# 2. Abrir Swagger
+# https://localhost:7001/swagger
+# Usa "Authorize" → Bearer <token>
+
+# 3. Login
 curl -X POST https://localhost:7001/api/v1/auth/login `
   -H "Content-Type: application/json" `
   -d '{"username":"admin","password":"Admin123*"}'
 
-# Respuesta:
-# {
-#   "success": true,
-#   "data": {
-#     "accessToken": "eyJhbGciOi...",
-#     "expiresAt": "2026-04-29T13:47:25Z",
-#     "user": { "username": "admin", "rol": "Administrador" }
-#   }
-# }
+# 4. Consultar clientes
+curl https://localhost:7001/api/v1/clientes -H "Authorization: Bearer <token>"
 
-# 3. Llamar al endpoint protegido
-curl https://localhost:7001/api/v1/clientes `
-  -H "Authorization: Bearer eyJhbGciOi..."
+# 5. Crear un plan
+curl -X POST https://localhost:7001/api/v1/planes `
+  -H "Authorization: Bearer <token>" `
+  -H "Content-Type: application/json" `
+  -d '{"nombrePlan":"Plan Nuevo","tipoServicio":"Internet","velocidadBajadaMbps":30,"precioMensual":220}'
 
-# 4. Verificar RBAC (rol distinto → 403)
-curl https://localhost:7001/api/v1/clientes/admin-only `
-  -H "Authorization: Bearer <token-de-cajero>"
-# 403 Forbidden
+# 6. Reporte de mora
+curl https://localhost:7001/api/v1/reportes/mora -H "Authorization: Bearer <token>"
 ```
-
-O simplemente abre **Swagger UI** en `https://localhost:7001/swagger` y usa el botón "Authorize".
 
 ---
 
@@ -311,8 +360,9 @@ O simplemente abre **Swagger UI** en `https://localhost:7001/swagger` y usa el b
 
 | Sección PDF | Tema |
 |---|---|
-| 3.4 RNF02 | RBAC |
-| 3.4 RNF06 | Bloqueo por intentos |
-| 3.5.6 — Capa de Lógica de Negocio | CQRS, Servicios de Dominio |
+| 3.1 RF01-RF18 | Todos los requerimientos funcionales |
+| 3.2 RNF01-RNF14 | Requerimientos no funcionales |
+| 3.4 HU01-HU22 | Historias de usuario mapeadas a endpoints |
+| 3.5.6 — Capa de Lógica de Negocio | CQRS, MediatR, Servicios de Dominio |
 | 3.5.6 — Capa de Acceso a Datos | Repositorios, EF Core, SPs |
 | 3.10 — Stored Procedures | sp_pago_insert, sp_cliente_insert |

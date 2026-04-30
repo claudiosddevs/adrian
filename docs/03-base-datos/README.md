@@ -115,6 +115,16 @@ erDiagram
         tinyint calificacion
         varchar ruta_audio
     }
+
+    BITACORA {
+        int id_bitacora PK
+        varchar tabla
+        varchar operacion
+        nvarchar valores_anteriores
+        nvarchar valores_nuevos
+        varchar usuario_accion
+        datetime fecha_hora
+    }
 ```
 
 </details>
@@ -277,35 +287,64 @@ Estos triggers son **transparentes** para EF Core; el código C# no los invoca p
 
 ---
 
-## 3.7 Migración EF Core
+## 3.7 Tabla BITACORA (RF17)
 
-La migración inicial está en `src/FIS.Infrastructure/Persistence/Migrations/20260429124725_InitialCreate.cs`. Crea las 8 tablas con:
+La migración `20260430032552_AddBitacora` añade la tabla para auditoría de operaciones:
 
-- Mismas columnas y tipos que `db.sql`.
-- Constraints CHECK (`tipo_cliente IN ('N','J')`, etc.).
-- Índices únicos y no únicos descritos arriba.
-- FKs con `ON DELETE NO ACTION` o `RESTRICT` (preserva integridad histórica).
+```sql
+CREATE TABLE dbo.BITACORA (
+    id_bitacora      INT IDENTITY(1,1) PRIMARY KEY,
+    tabla            NVARCHAR(50)      NOT NULL,
+    operacion        NVARCHAR(10)      NOT NULL,
+    valores_anteriores NVARCHAR(MAX),
+    valores_nuevos   NVARCHAR(MAX),
+    usuario_accion   NVARCHAR(100),
+    fecha_hora       DATETIME2         DEFAULT GETDATE()
+);
+```
 
-Para regenerar:
+Los triggers SQL de `db.sql` insertan registros en esta tabla automáticamente. La API expone el endpoint `GET /api/v1/reportes/bitacora` para consultas de auditoría (solo Administrador).
+
+---
+
+## 3.8 Migraciones EF Core
+
+| Migración | Fecha | Contenido |
+|---|---|---|
+| `InitialCreate` | 2026-04-29 | 8 tablas del `db.sql` con constraints, índices y FKs |
+| `AddBitacora` | 2026-04-30 | Tabla `BITACORA` para RF17 |
 
 ```powershell
-# Eliminar última migración
-dotnet ef migrations remove --project src/FIS.Infrastructure --startup-project src/FIS.Api
+# Aplicar todas las migraciones
+dotnet ef database update --project src/FIS.Infrastructure --startup-project src/FIS.Api
 
 # Crear nueva migración tras cambios en entidades
-dotnet ef migrations add NombreDescriptivo --project src/FIS.Infrastructure --startup-project src/FIS.Api --output-dir Persistence/Migrations
+dotnet ef migrations add NombreDescriptivo --project src/FIS.Infrastructure --startup-project src/FIS.Api
 ```
 
 ---
 
-## 3.8 Sembrado Inicial
+## 3.9 Sembrado de Datos
 
-`DataSeeder` (en `FIS.Infrastructure/Persistence/Seeders/`) crea idempotentemente:
+### DataSeeder (mínimo — siempre en Development)
 
-- Roles: `Administrador`, `Cajero`, `Tecnico`, `Cliente`.
-- Usuario admin demo: `admin / Admin123*` (con hash BCrypt cost 12).
+Crea idempotentemente roles canónicos y el usuario `admin / Admin123*`.
 
-Se ejecuta en `Program.cs` solo en ambiente Development.
+### DemoDataSeeder (completo — solo en Development)
+
+Crea datos representativos para demostrar todos los RF:
+
+| Entidad | Cantidad | Notas |
+|---|---|---|
+| Roles | 4 | Administrador, Cajero, Tecnico, Cliente |
+| Usuarios | 6 | admin, cajero1, cajero2, tecnico1, tecnico2, tecnico3 |
+| Clientes | 12 | Naturales y jurídicos en 6 ciudades bolivianas |
+| Planes | 8 | Internet 10–200 Mbps, Hosting, Dominio |
+| Contratos | 12 | Activos, finalizados y suspendidos |
+| Pagos | 20+ | Normales, con mora (10%) y un pago anulado |
+| Reclamos | 8 | Con técnicos asignados, estados variados, calificaciones |
+
+Ambos seeders son **idempotentes** (verifican existencia antes de insertar).
 
 ---
 
