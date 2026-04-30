@@ -30,6 +30,18 @@ public class PlanServicio
         Activo = true;
     }
 
+    public void Actualizar(
+        string nombrePlan, string tipoServicio,
+        decimal? velocidadBajada, decimal? velocidadSubida,
+        decimal precioMensual)
+    {
+        NombrePlan = nombrePlan;
+        TipoServicio = tipoServicio;
+        VelocidadBajadaMbps = velocidadBajada;
+        VelocidadSubidaMbps = velocidadSubida;
+        PrecioMensual = precioMensual;
+    }
+
     public void ActualizarPrecio(decimal nuevoPrecio) => PrecioMensual = nuevoPrecio;
     public void Desactivar() => Activo = false;
 }

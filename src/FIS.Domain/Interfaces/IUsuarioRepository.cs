@@ -9,6 +9,8 @@ public interface IUsuarioRepository
     Task<Usuario?> GetByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> ExisteUsernameAsync(string username, CancellationToken ct = default);
     Task<bool> ExisteEmailAsync(string email, CancellationToken ct = default);
+    Task<IReadOnlyList<Usuario>> ListarTodosAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Usuario>> ListarTecnicosAsync(CancellationToken ct = default);
     Task AddAsync(Usuario usuario, CancellationToken ct = default);
     void Update(Usuario usuario);
 }

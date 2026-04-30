@@ -3,6 +3,7 @@ using FIS.Domain.Interfaces;
 using FIS.Infrastructure.Identity;
 using FIS.Infrastructure.Persistence;
 using FIS.Infrastructure.Persistence.Repositories;
+using FIS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,12 @@ public static class DependencyInjection
 
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IClienteRepository, ClienteRepository>();
+        services.AddScoped<IPlanRepository, PlanRepository>();
+        services.AddScoped<IContratoRepository, ContratoRepository>();
+        services.AddScoped<IPagoRepository, PagoRepository>();
+        services.AddScoped<IReclamoRepository, ReclamoRepository>();
+
+        services.AddScoped<IReporteService, ReporteService>();
 
         services.Configure<JwtSettings>(config.GetSection("Jwt"));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();

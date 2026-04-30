@@ -142,7 +142,8 @@ if (app.Environment.IsDevelopment())
     try
     {
         await DataSeeder.SeedAsync(db, hasher);
-        Log.Information("Migración y sembrado completados.");
+        await DemoDataSeeder.SeedDemoAsync(db, hasher);
+        Log.Information("Migración y sembrado de demostración completados.");
     }
     catch (Exception ex)
     {

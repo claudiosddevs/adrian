@@ -20,6 +20,7 @@ public class FisDbContext : DbContext, IUnitOfWork
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<Mora> Moras => Set<Mora>();
     public DbSet<Reclamo> Reclamos => Set<Reclamo>();
+    public DbSet<BitacoraOperacion> Bitacora => Set<BitacoraOperacion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

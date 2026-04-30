@@ -23,6 +23,51 @@ namespace FIS.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FIS.Domain.Entities.BitacoraOperacion", b =>
+                {
+                    b.Property<int>("IdBitacora")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id_bitacora");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdBitacora"));
+
+                    b.Property<DateTime>("FechaHora")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("fecha_hora")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("Operacion")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("operacion");
+
+                    b.Property<string>("Tabla")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("tabla");
+
+                    b.Property<string>("UsuarioAccion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("usuario_accion");
+
+                    b.Property<string>("ValoresAnteriores")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("valores_anteriores");
+
+                    b.Property<string>("ValoresNuevos")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("valores_nuevos");
+
+                    b.HasKey("IdBitacora");
+
+                    b.ToTable("BITACORA", "dbo");
+                });
+
             modelBuilder.Entity("FIS.Domain.Entities.Cliente", b =>
                 {
                     b.Property<int>("IdCliente")

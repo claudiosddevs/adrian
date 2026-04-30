@@ -28,6 +28,15 @@ public class UsuarioRepository : IUsuarioRepository
     public Task<bool> ExisteEmailAsync(string email, CancellationToken ct = default) =>
         _db.Usuarios.AnyAsync(u => u.Email == email, ct);
 
+    public async Task<IReadOnlyList<Usuario>> ListarTodosAsync(CancellationToken ct = default) =>
+        await _db.Usuarios.Include(u => u.Rol).OrderBy(u => u.Apellidos).ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Usuario>> ListarTecnicosAsync(CancellationToken ct = default) =>
+        await _db.Usuarios.Include(u => u.Rol)
+            .Where(u => u.Rol.NombreRol == "Tecnico" && u.Activo)
+            .OrderBy(u => u.Apellidos)
+            .ToListAsync(ct);
+
     public async Task AddAsync(Usuario usuario, CancellationToken ct = default) =>
         await _db.Usuarios.AddAsync(usuario, ct);
 

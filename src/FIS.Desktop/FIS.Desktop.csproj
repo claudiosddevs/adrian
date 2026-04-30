@@ -19,6 +19,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>FIS.Desktop</RootNamespace>
+    <UseVisualBasicRuntime>true</UseVisualBasicRuntime>
   </PropertyGroup>
 
   <ItemGroup>

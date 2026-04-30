@@ -33,7 +33,12 @@ internal static class Program
             .AddHttpMessageHandler<AuthHeaderHandler>();
 
         services.AddTransient<frmLogin>();
-        services.AddTransient<frmDashboard>();
+        services.AddTransient<frmDashboard>(provider =>
+            new frmDashboard(
+                provider.GetRequiredService<IFisApiClient>(),
+                provider.GetRequiredService<TokenStore>(),
+                provider.GetRequiredService<SesionUsuario>(),
+                provider));
 
         var sp = services.BuildServiceProvider();
 
